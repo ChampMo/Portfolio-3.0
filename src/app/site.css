@@ -1,0 +1,1376 @@
+/* ==================================================================
+   SIGNAL — effects layer
+   Scroll/boot choreography that would be unreadable as utility soup.
+   Tokens come from globals.css; never hardcode colours here.
+   ================================================================== */
+
+/* ---------- reticle cursor ----------
+   Public site only, fine pointers only — see ReticleCursor.tsx for the gate.
+   `!important` on the cursor rule because the default cursor otherwise wins
+   the specificity fight against every link/button's own `cursor` value. */
+body.reticle-on,
+body.reticle-on a,
+body.reticle-on button {
+  cursor: none !important;
+}
+.reticle {
+  position: fixed;
+  left: 0;
+  top: 0;
+  /* Above every overlay on the site — the lightbox at 110, the command
+     palette at 120. At 100 the cursor was painted *under* the lightbox
+     backdrop, so opening an image made the pointer vanish entirely while the
+     system cursor stayed hidden by `cursor: none`. Safe to sit on top
+     because the whole thing is `pointer-events: none`. */
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  will-change: transform;
+
+  /* ---- contrast ----
+     The reticle floats over whatever the page happens to be showing, and its
+     accent is only guaranteed to contrast with the site's own background —
+     not with a dark screenshot, a video frame or an embedded app. CSS cannot
+     sample the pixels underneath, so the shapes carry a shadow instead.
+
+     One shadow, tight and dark. An earlier version stacked a soft white bloom
+     on top to cover dark backgrounds too, and that was a mistake: the parts
+     being separated are 1.5px brackets and 9px monospace digits, and a 6px
+     glow around strokes that thin does not read as a halo, it reads as being
+     out of focus. The accent already stands out against dark surfaces on its
+     own — pale ones were the only real problem, and one shadow solves it
+     without touching the edges. */
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.4));
+}
+.reticle.is-live { opacity: 1; }
+.ret-box {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  /* Centred with the individual `translate` property, not `transform`.
+     The two are composed in a fixed order — translate, then rotate, then
+     scale, then `transform` — and `transform` is applied *first*. So a
+     `transform: translate(-50%, -50%)` gets scaled along with everything else,
+     which shifts the box by (k-1)·half its size as it grows: it appeared to
+     expand out of its own bottom-right corner instead of from the middle.
+     Using `translate` puts the centring last, after the scale, and the box
+     grows about its centre at every size. */
+  translate: -50% -50%;
+  transition: width 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.reticle.is-wide .ret-box { width: 58px; height: 58px; }
+.ret-c {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-color: var(--signal);
+}
+.ret-c.tl { top: 0; left: 0; border-top: 1.5px solid; border-left: 1.5px solid; }
+.ret-c.tr { top: 0; right: 0; border-top: 1.5px solid; border-right: 1.5px solid; }
+.ret-c.bl { bottom: 0; left: 0; border-bottom: 1.5px solid; border-left: 1.5px solid; }
+.ret-c.br { bottom: 0; right: 0; border-bottom: 1.5px solid; border-right: 1.5px solid; }
+.ret-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 2px;
+  margin: -1px 0 0 -1px;
+  background: var(--signal);
+  transition: opacity 0.2s ease;
+}
+.reticle.is-wide .ret-dot { opacity: 0; }
+.ret-read {
+  position: absolute;
+  left: 22px;
+  top: 14px;
+  white-space: nowrap;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+.reticle.is-wide .ret-read { left: 36px; }
+
+/* ---------- depth stack ---------- */
+.hero-wrap {
+  height: 100svh;
+  position: relative;
+}
+/* Fixed, not sticky: the page body scrolls over a stationary hero. */
+.hero-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 7rem var(--pad-x) 6rem;
+}
+/* Keeps the headline and the portrait visually related on very wide screens.
+   Without a cap they drift to opposite edges and the hero reads as two
+   unrelated things floating in space. */
+.hero-inner {
+  position: relative;
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+.page-body {
+  position: relative;
+  z-index: 2;
+  background: var(--ground);
+}
+
+/* ---------- grid backdrop ---------- */
+.grid-bg {
+  position: absolute;
+  inset: -15%;
+  pointer-events: none;
+  will-change: transform;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.55;
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 32% 42%, black 0%, transparent 78%);
+  mask-image: radial-gradient(ellipse 60% 55% at 32% 42%, black 0%, transparent 78%);
+}
+
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -140px;
+  height: 140px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--signal) 7%, transparent),
+    transparent
+  );
+  animation: sweepdown 7s ease-in-out infinite;
+}
+@keyframes sweepdown {
+  0% { top: -140px; }
+  55% { top: 100%; }
+  100% { top: 100%; }
+}
+
+.bracket {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-color: var(--ink-muted);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ---------- boot sequence ---------- */
+.boot { opacity: 0; transform: translateY(14px); }
+.booted .boot {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.8s cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition-delay: var(--d, 0s);
+}
+.name-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.09em;
+  margin-bottom: -0.09em;
+  will-change: transform;
+}
+.name-ch { display: inline-block; transform: translateY(108%); }
+.booted .name-ch {
+  transform: none;
+  transition: transform 0.9s cubic-bezier(0.19, 1, 0.22, 1);
+  transition-delay: var(--d, 0s);
+}
+
+/* ---------- reveal ---------- */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+[data-reveal].is-in { opacity: 1; transform: none; }
+
+/* ---------- status dot ---------- */
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: pulse 2.4s ease-out infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--signal) 45%, transparent); }
+  70% { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ---------- ghost numerals ---------- */
+.ghost-num {
+  position: absolute;
+  top: 2rem;
+  right: 2vw;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-big-shoulders), sans-serif;
+  font-weight: 700;
+  font-size: clamp(9rem, 22vw, 20rem);
+  line-height: 0.8;
+  letter-spacing: -0.03em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--grid);
+  will-change: transform;
+}
+
+/* Rail variant. Offsetting by a percentage of the numeral's own box keeps it
+   centred on the eyebrow line at every width, where a fixed `top` would drift
+   as the clamped font-size changes. Matches where the other sections' numerals
+   land relative to their heading. */
+.ghost-num.is-rail {
+  top: 0;
+  transform: translateY(-44%);
+}
+
+/* ---------- spotlight card ---------- */
+.spot { position: relative; overflow: hidden; }
+.spot::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--signal) 10%, transparent),
+    transparent 65%
+  );
+}
+.spot:hover::before { opacity: 1; }
+
+/* ---------- horizontal project rail ---------- */
+.rail-sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.rail-track {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  will-change: transform;
+}
+
+/* Lead-in / lead-out are real elements, not padding on the track.
+   An overflowing flex container's `scrollWidth` omits its trailing padding,
+   so padding-right was silently dropped from the scroll distance and the last
+   card never got its travel past centre. Spacers always count. */
+.rail-lead-in,
+.rail-lead-out {
+  flex: none;
+  align-self: stretch;
+}
+/* Places the first card just right of centre at progress 0, so it visibly
+   travels inward instead of arriving parked at full size. */
+.rail-lead-in {
+  width: max(var(--pad-x), calc(50vw - 140px));
+}
+/* Enough for the last card to reach centre and keep going before release. */
+.rail-lead-out {
+  width: max(var(--pad-x), calc(50vw + 160px));
+}
+
+/* ---------- radar ---------- */
+.radar-rings {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-radial-gradient(
+    circle at center,
+    transparent 0 63px,
+    color-mix(in srgb, var(--grid) 85%, transparent) 63px 64px
+  );
+  -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 72%);
+  mask-image: radial-gradient(circle at center, black 30%, transparent 72%);
+}
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--signal) 20%, transparent) 0deg,
+    transparent 55deg,
+    transparent 360deg
+  );
+  -webkit-mask-image: radial-gradient(circle at center, black 12%, transparent 70%);
+  mask-image: radial-gradient(circle at center, black 12%, transparent 70%);
+  animation: spin 7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- mobile ---------- */
+@media (max-width: 680px) {
+  .ghost-num { display: none; }
+  .rail-sticky { position: static; height: auto; }
+  .rail-track {
+    overflow-x: auto;
+    padding: 0 var(--pad-x) 12px;
+    transform: none !important;
+  }
+  .rail-lead-in,
+  .rail-lead-out { display: none; }
+  .rail-track > * { transform: none !important; opacity: 1 !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanline, .radar-sweep { display: none; }
+  .boot, .name-ch { opacity: 1 !important; transform: none !important; }
+  .hero-stage { filter: none !important; }
+}
+
+/* ==================================================================
+   PRELOADER — first-load curtain
+   Two panels that split apart, revealing the hero underneath.
+   ================================================================== */
+/* Hidden by default. PreloadFlag sets data-preload before paint on a first
+   visit; without it the curtain is never painted, so a skipped preloader
+   cannot flash. */
+.preloader { display: none; }
+:root[data-preload="1"] .preloader {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+/* Scroll lock is keyed off the same flag, so clearing the attribute both
+   hides the curtain and restores scrolling in one step. */
+:root[data-preload="1"] body { overflow: hidden; }
+.preloader-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.5%; /* slight overlap so no hairline shows at the seam */
+  background: var(--ground);
+  transition: transform 0.95s cubic-bezier(0.76, 0, 0.24, 1);
+}
+.preloader-top { top: 0; }
+.preloader-bottom { bottom: 0; }
+:root[data-preload-opening="1"] .preloader-top { transform: translateY(-100%); }
+:root[data-preload-opening="1"] .preloader-bottom { transform: translateY(100%); }
+
+.preloader-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  transition: opacity 0.3s ease;
+}
+:root[data-preload-opening="1"] .preloader-content { opacity: 0; }
+
+.preloader-label {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--ink-muted);
+}
+.preloader-count {
+  font-family: var(--font-big-shoulders), sans-serif;
+  font-weight: 700;
+  font-size: clamp(4rem, 14vw, 9rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.preloader-bar {
+  display: block;
+  width: min(220px, 40vw);
+  height: 1px;
+  background: var(--grid);
+  overflow: hidden;
+}
+.preloader-fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--signal);
+  transform-origin: left;
+  animation: preload-fill 1.9s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+@keyframes preload-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ==================================================================
+   SPLIT TEXT — per-character reveal for section headings
+   Words stay whole so wrapping still breaks at word boundaries.
+   ================================================================== */
+.split-word {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.09em;
+  margin-bottom: -0.09em;
+}
+.split-char {
+  display: inline-block;
+  transform: translateY(110%);
+}
+.split-in .split-char {
+  transform: none;
+  transition: transform 0.85s cubic-bezier(0.19, 1, 0.22, 1);
+  transition-delay: var(--d, 0s);
+}
+@media (prefers-reduced-motion: reduce) {
+  .split-char { transform: none !important; transition: none !important; }
+  .preloader { display: none; }
+}
+
+/* ---------- reticle: contextual modes ---------- */
+/* Press feedback */
+.reticle .ret-box { transition: width .3s cubic-bezier(.2,.8,.2,1), height .3s cubic-bezier(.2,.8,.2,1), transform .12s ease; }
+.reticle.is-down .ret-box { scale: 0.8; }
+
+/* "ring" mode — a label orbiting the reticle, for project cards */
+.ret-ring {
+  position: absolute;
+  left: 0; top: 0;
+  width: 104px; height: 104px;
+  margin: -52px 0 0 -52px;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(.7);
+  transition: opacity .3s ease, transform .3s cubic-bezier(.2,.8,.2,1);
+  pointer-events: none;
+}
+.reticle.is-ring .ret-ring { opacity: 1; transform: scale(1); }
+.ret-ring-inner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.34em;
+  color: var(--signal);
+  white-space: nowrap;
+  animation: ret-spin 6s linear infinite;
+}
+@keyframes ret-spin { to { transform: rotate(360deg); } }
+/* The orbiting label replaces the readout, so hide the text in ring mode. */
+.reticle.is-ring .ret-read { opacity: 0; }
+
+/* "pan" mode — travel arrows, for the draggable gallery */
+.ret-pan {
+  position: absolute;
+  top: 0;
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 13px;
+  color: var(--signal);
+  opacity: 0;
+  transition: opacity .25s ease, transform .25s cubic-bezier(.2,.8,.2,1);
+  pointer-events: none;
+}
+.ret-pan-l { left: 0; transform: translate(-6px, -50%); }
+.ret-pan-r { left: 0; transform: translate(-6px, -50%); }
+.reticle.is-pan .ret-pan-l { opacity: 1; transform: translate(-34px, -50%); }
+.reticle.is-pan .ret-pan-r { opacity: 1; transform: translate(24px, -50%); }
+
+
+/* ---------- rail end cap: "view all" orb ---------- */
+.orb-ring { animation: orb-spin 24s linear infinite; transition: none; }
+.orb:hover .orb-ring { animation-duration: 9s; }
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+
+.orb-text {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  fill: var(--color-ink-muted);
+  text-transform: uppercase;
+  transition: fill 0.3s ease;
+}
+.orb:hover .orb-text { fill: var(--color-signal); }
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-ring, .orb:hover .orb-ring { animation: none; }
+}
+
+
+/* ---------- archive grid ---------- */
+/* Tilt is a CSS transform so the pointer handler only writes two custom
+   properties; the FLIP and open animations override `transform` outright
+   while they run, which is fine because tilt rests at zero. */
+.arc-card {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease;
+}
+
+/* Covers arrive undeveloped and are resolved by a passing scan line. */
+.arc-card .scan img {
+  filter: grayscale(1) brightness(0.82) contrast(1.05);
+  transition: filter 0.55s ease 0.34s;
+}
+.arc-card.is-scanned .scan img { filter: none; }
+
+.scan-line {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0 44%,
+    color-mix(in srgb, var(--signal) 85%, transparent) 48% 52%,
+    transparent 56% 100%
+  );
+}
+.arc-card.is-scanned .scan-line { animation: scan-travel 1s ease-in-out forwards; }
+@keyframes scan-travel {
+  0%   { opacity: 0; transform: translateY(-100%); }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(100%); }
+}
+
+/* Card being opened stays lit at z-index 8 while everything behind it dims. */
+html.archive-opening::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* Over the sticky header (z-50) and the filter deck (z-40) — leaving those
+     lit while the page behind them dimmed was the giveaway that this was an
+     overlay rather than the card lifting off the page. */
+  z-index: 90;
+  pointer-events: none;
+  background: var(--ground);
+  opacity: 0;
+  animation: arc-dim 0.42s ease forwards;
+}
+@keyframes arc-dim { to { opacity: 0.9; } }
+
+/* ---------- home: filter launcher ---------- */
+.scan-sweep {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    transparent 0 42%,
+    color-mix(in srgb, var(--signal) 70%, transparent) 47% 53%,
+    transparent 58% 100%
+  );
+  transform: translateX(-100%);
+  animation: sweep-across 0.62s cubic-bezier(0.6, 0, 0.3, 1) forwards;
+}
+@keyframes sweep-across { to { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .arc-card { transition: border-color 0.3s ease; transform: none; }
+  .arc-card .scan img { filter: none; transition: none; }
+  .arc-card.is-scanned .scan-line,
+  html.archive-opening::after,
+  .scan-sweep { animation: none; }
+}
+
+
+/* ---------- project pager artwork ---------- */
+.pager-art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* The mask is what makes this read as artwork bleeding into the card rather
+   than a photo with a border. Applied to the wrapper so both layers dissolve
+   on the same line. */
+.pager-art.is-left {
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 34%, transparent 78%);
+  mask-image: linear-gradient(to right, #000 0%, #000 34%, transparent 78%);
+}
+.pager-art.is-right {
+  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 34%, transparent 78%);
+  mask-image: linear-gradient(to left, #000 0%, #000 34%, transparent 78%);
+}
+
+/* Blurred, over-scaled copy: colour and light, no recognisable shape. */
+.pager-wash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.34;
+  filter: blur(26px) saturate(1.25);
+  transform: scale(1.6);
+  transition: opacity 0.55s ease, transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Sharp plate, so the cover is still identifiable. */
+.pager-plate {
+  position: absolute;
+  top: 50%;
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--grid);
+  opacity: 0.72;
+  filter: grayscale(0.65) contrast(1.04);
+  transform: translateY(-50%) scale(1);
+  transition: opacity 0.45s ease, filter 0.55s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pager-art.is-left .pager-plate { left: 26px; }
+.pager-art.is-right .pager-plate { right: 26px; }
+
+.pager:hover .pager-wash { opacity: 0.55; transform: scale(1.78); }
+.pager:hover .pager-plate {
+  opacity: 1;
+  filter: none;
+  transform: translateY(-50%) scale(1.08);
+}
+.pager-art.is-left .pager-plate { transform-origin: left center; }
+.pager-art.is-right .pager-plate { transform-origin: right center; }
+
+/* Below 640px the two cards stack full-width and the text runs across the
+   whole card, so the artwork would sit under it. */
+@media (max-width: 639px) {
+  .pager-plate { display: none; }
+  .pager-wash { opacity: 0.2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pager-wash,
+  .pager-plate,
+  .pager:hover .pager-wash,
+  .pager:hover .pager-plate {
+    transition: none;
+  }
+  .pager:hover .pager-wash { transform: scale(1.6); }
+  .pager:hover .pager-plate { transform: translateY(-50%) scale(1); }
+}
+
+
+/* ---------- loading skeleton ---------- */
+.skel {
+  background: linear-gradient(
+    90deg,
+    var(--panel-2) 0%,
+    color-mix(in srgb, var(--grid) 60%, var(--panel-2)) 50%,
+    var(--panel-2) 100%
+  );
+  background-size: 220% 100%;
+  animation: skel-sweep 1.5s ease-in-out infinite;
+}
+@keyframes skel-sweep {
+  0%   { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+
+.skel-dots::after {
+  content: "";
+  animation: skel-dots 1.4s steps(4, end) infinite;
+}
+@keyframes skel-dots {
+  0%   { content: ""; }
+  25%  { content: "."; }
+  50%  { content: ".."; }
+  75%  { content: "..."; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; }
+  .skel-dots::after { animation: none; content: "..."; }
+}
+
+
+/* ---------- lightbox ---------- */
+.lightbox { animation: lb-in 0.22s ease forwards; }
+@keyframes lb-in { from { opacity: 0; } to { opacity: 1; } }
+
+.lightbox-img { animation: lb-img 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+@keyframes lb-img {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lightbox, .lightbox-img { animation: none; }
+}
+
+
+/* ---------- print ----------
+   The résumé is meant to leave the browser as a PDF, so print forces the light
+   palette regardless of the visitor's theme (dark backgrounds waste toner and
+   most PDF readers show them as a grey slab), drops every control, and stops
+   entries splitting across a page break. */
+@media print {
+  .no-print,
+  .reticle,
+  #scroll-progress {
+    display: none !important;
+  }
+
+  .resume {
+    --ground: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #ffffff;
+    --grid: #cfcabb;
+    --ink: #111111;
+    --ink-muted: #3a3a3a;
+    --signal: #b4500a;
+    --telemetry: #245b64;
+    background: #fff;
+  }
+
+  .resume main { max-width: none; padding: 0; }
+
+  li, section { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
+
+  a { text-decoration: none; }
+
+  @page { margin: 14mm; }
+}
+
+
+/* ---------- share menu ---------- */
+.share-menu { animation: share-in 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+@keyframes share-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .share-menu { animation: none; }
+}
+
+
+/* ---------- scroll-linked panel unfold ----------
+   One driver: `--open`, written by ScrollOpen as a plain 0-1 number. */
+.scroll-open {
+  --open: 0;
+  /* A pure left-to-right wipe: only the right inset moves, so the panel keeps
+     its full height throughout and grows in width alone.
+     Clip rather than an animated `width`. Width is a layout property — the
+     panel is in a flex column beside the portrait, so animating it would
+     reflow that column every frame and reflow the text inside as the measure
+     changed. Clipping uncovers a panel that is already at its final size, so
+     nothing inside ever lays out twice. */
+  clip-path: inset(
+    0 calc((1 - var(--open)) * 100%) 0 0
+    round var(--radius-card)
+  );
+  will-change: clip-path;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-open { clip-path: none; }
+}
+
+
+/* ---------- product deck ---------- */
+/* Below md the panels stack and the page scrolls normally: hijacking the
+   horizontal gesture on a touch device fights the platform and always loses. */
+.deck-track { scrollbar-width: none; }
+.deck-track::-webkit-scrollbar { display: none; }
+
+@media (min-width: 768px) {
+  .deck-track > section { width: 100%; }
+}
+
+/* Screen power-on. The scan line sweeps once as the panel is reached, and the
+   picture resolves behind it — the same instrument language the archive cards
+   use, so the two pages read as one machine. */
+.device .screen-scan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0 46%,
+    color-mix(in srgb, var(--signal) 80%, transparent) 49% 51%,
+    transparent 54% 100%
+  );
+}
+.device > div > :not(.screen-scan) {
+  filter: brightness(0.25) saturate(0.2);
+  transition: filter 0.7s ease 0.28s;
+}
+.device.is-on > div > :not(.screen-scan) { filter: none; }
+.device.is-on .screen-scan { animation: screen-on 0.95s ease-in-out forwards; }
+
+@keyframes screen-on {
+  0%   { opacity: 0; transform: translateY(-100%); }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .device > div > :not(.screen-scan) { filter: none; transition: none; }
+  .device .screen-scan { display: none; }
+}
+
+
+/* ---------- hero: products drawer pull ---------- */
+.products-handle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 12px;
+  border: 1px solid var(--grid);
+  border-right: 0;
+  border-radius: 14px 0 0 14px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  backdrop-filter: blur(8px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.3s ease;
+}
+.products-handle:hover,
+.products-handle:focus-visible {
+  transform: translateY(-50%) translateX(-6px);
+  border-color: var(--signal);
+}
+
+.products-handle-text {
+  writing-mode: vertical-rl;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  color: var(--ink-muted);
+  transition: color 0.3s ease;
+}
+.products-handle:hover .products-handle-text { color: var(--signal); }
+
+.products-handle-arrow {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink-muted);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+.products-handle:hover .products-handle-arrow {
+  color: var(--signal);
+  transform: translateX(3px);
+}
+
+/* Pulses so the handle is noticed without moving anything. */
+.products-handle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--signal);
+  animation: handle-pulse 2.4s ease-in-out infinite;
+}
+@keyframes handle-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--signal) 55%, transparent); }
+  50%      { opacity: 0.6; box-shadow: 0 0 0 6px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .products-handle-dot { animation: none; }
+  .products-handle:hover { transform: translateY(-50%); }
+}
+
+
+/* ---------- route slide panel ----------
+   Not a plain rectangle: it carries the same grid the sections use plus a lit
+   leading edge, so what crosses the screen reads as a bulkhead travelling past
+   rather than a colour wiping over the page. */
+.slide-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--ground);
+  will-change: transform;
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 72px 72px;
+}
+.slide-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--signal);
+  box-shadow: 0 0 26px 3px color-mix(in srgb, var(--signal) 55%, transparent);
+}
+.slide-panel[data-from="right"]::before { left: 0; }
+.slide-panel[data-from="left"]::before { right: 0; }
+
+
+/* ---------- reticle: idle acts ----------
+   After ten seconds still, the reticle does something rather than sitting
+   there. Each act is a class the loop toggles; the shapes live here. */
+
+/* SCAN — corners spread and drift, the box breathes. */
+.reticle.is-scan .ret-box { width: 46px; height: 46px; }
+.reticle.is-scan .ret-c { animation: ret-breathe 1.6s ease-in-out infinite; }
+@keyframes ret-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+
+/* LOCK — the box clamps to the size of the element it found. */
+.reticle.is-lock .ret-box {
+  width: var(--lock-w, 58px);
+  height: var(--lock-h, 58px);
+  transition: width 0.34s cubic-bezier(0.2, 1.4, 0.4, 1),
+              height 0.34s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.reticle.is-lock .ret-c {
+  border-color: var(--signal);
+  border-width: 2px;
+}
+.reticle.is-lock .ret-dot { opacity: 0; }
+.reticle.is-lock .ret-read { color: var(--signal); }
+
+/* CATCH — a single snap at the moment the mote is taken. */
+.reticle.is-catch .ret-box { animation: ret-snap 0.34s cubic-bezier(0.3, 1.6, 0.4, 1); }
+@keyframes ret-snap {
+  0%   { scale: 1; }
+  40%  { scale: 0.62; }
+  100% { scale: 1; }
+}
+
+/* The mote itself — its own element, at its own page position. */
+.ret-mote {
+  position: fixed;
+  left: 0;
+  top: 0;
+  /* One below the reticle, but in the same band — these sit outside
+     `.reticle` (the mote holds a page position of its own rather than
+     travelling with the cursor) and so need the stacking fix separately. */
+  z-index: 199;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 12px 3px color-mix(in srgb, var(--signal) 45%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  will-change: transform;
+}
+.ret-mote.is-on { opacity: 0.9; }
+
+/* The catch: the mote is hidden and this takes its place, scattering eight
+   fragments outward from the same point. Each fragment carries its own
+   direction, so the burst is a shape rather than a ring. */
+.ret-burst {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 199;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.ret-burst.is-on { opacity: 1; }
+
+.ret-frag {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  margin: -2px;
+  border-radius: 50%;
+  background: var(--signal);
+  opacity: 0;
+}
+.ret-burst.is-on .ret-frag {
+  animation: ret-frag 0.72s cubic-bezier(0.15, 0.9, 0.3, 1) forwards;
+}
+
+/* Eight directions, uneven distances — an even ring reads as a graphic, an
+   uneven scatter reads as something breaking. */
+.ret-burst .ret-frag:nth-child(1) { --dx:  34px; --dy:  -8px; }
+.ret-burst .ret-frag:nth-child(2) { --dx:  22px; --dy:  24px; }
+.ret-burst .ret-frag:nth-child(3) { --dx:  -6px; --dy:  38px; }
+.ret-burst .ret-frag:nth-child(4) { --dx: -28px; --dy:  20px; }
+.ret-burst .ret-frag:nth-child(5) { --dx: -36px; --dy:  -6px; }
+.ret-burst .ret-frag:nth-child(6) { --dx: -18px; --dy: -30px; }
+.ret-burst .ret-frag:nth-child(7) { --dx:   8px; --dy: -40px; }
+.ret-burst .ret-frag:nth-child(8) { --dx:  30px; --dy: -26px; }
+
+/* Staggered here, unlike the resting corners: fragments of one thing coming
+   apart do not leave at the same instant. */
+.ret-burst .ret-frag:nth-child(2) { animation-delay: 0.02s; }
+.ret-burst .ret-frag:nth-child(4) { animation-delay: 0.04s; }
+.ret-burst .ret-frag:nth-child(6) { animation-delay: 0.03s; }
+.ret-burst .ret-frag:nth-child(8) { animation-delay: 0.05s; }
+
+@keyframes ret-frag {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1.2); }
+  70%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle.is-scan .ret-c,
+  .reticle.is-catch .ret-box,
+  .ret-mote.is-caught { animation: none; }
+}
+
+
+/* ---------- reticle: resting pose ----------
+   Not an act — the state between them. The corners breathe outward and back,
+   the centre dot keeps a slower pulse, and every few seconds the whole thing
+   blinks. Nothing travels: this says "waiting", where movement would say
+   "doing something".
+
+   The corners animate their own offsets rather than scaling `.ret-box`,
+   because the box already carries a `translate` for centring and a
+   width/height transition for the hover state — animating its transform would
+   fight both. */
+/* The whole frame scales, rather than each corner being nudged outward by a
+   few pixels. Shifting margins moves four separate boxes and reads as parts
+   twitching; scaling moves one object, which is what breathing looks like.
+   Sub-pixel steps also come for free, so there is no visible stair-stepping.
+
+   `scale` as its own property, never `transform`: `.ret-box` already carries
+   a `translate` to sit on the cursor, and writing `transform` here would drop
+   it and fling the frame into the corner of the screen. The individual
+   properties compose — translate, then rotate, then scale — so all of them
+   survive together. */
+.reticle.is-rest .ret-box {
+  animation: ret-breathe 4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes ret-breathe {
+  0%, 100% { scale: 1; }
+  50%      { scale: 1.22; }
+}
+
+/* All four corners share one blink timeline — no per-corner delay. The frame
+   is a single object, and staggering them read as four parts loosely attached
+   to each other instead. */
+.reticle.is-rest .ret-c {
+  animation: ret-blink 7s ease-in-out infinite;
+}
+
+/* A double blink, then a long pause. One blink on a loop reads as a fault
+   light; two close together reads as an eye. */
+@keyframes ret-blink {
+  0%, 84%, 100% { opacity: 1; }
+  86%           { opacity: 0.1; }
+  88%           { opacity: 1; }
+  91%           { opacity: 0.1; }
+  93%           { opacity: 1; }
+}
+
+.reticle.is-rest .ret-dot {
+  animation: ret-heart 3.4s ease-in-out infinite;
+}
+@keyframes ret-heart {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+/* A cursor caret after the readout, so the numbers look like a live terminal
+   rather than a frozen label. */
+.reticle.is-rest .ret-read::after {
+  content: "_";
+  margin-left: 2px;
+  animation: ret-caret 1.1s steps(1) infinite;
+}
+@keyframes ret-caret {
+  0%, 50%   { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle.is-rest .ret-box,
+  .reticle.is-rest .ret-c,
+  .reticle.is-rest .ret-dot,
+  .reticle.is-rest .ret-read::after,
+  .ret-burst.is-on .ret-frag { animation: none; }
+}
+
+
+/* ---------- reticle: acts A / B / C ----------
+   Each act is a class the loop toggles; the shapes live here.
+
+   All of these use the individual `rotate` / `scale` properties rather than
+   `transform`, because `.ret-box` already carries a `translate` for
+   centring — writing `transform` here would drop the centring and the box
+   would jump off the cursor. */
+
+/* A — CALIBRATE: the frame turns like a lens iris, one corner lit at a time. */
+/* One pass of exactly two turns over the eight checks — a quarter turn per
+   check, ticking rather than gliding.
+
+   Finite and landing on 720deg on purpose. Looping it left the frame at an
+   arbitrary angle when the act ended, and removing the class then snapped it
+   back to zero in a single frame. 720deg is visually identical to 0deg, so
+   holding the last frame means there is nothing left to snap back from. */
+.reticle.is-cal .ret-box {
+  animation: ret-cal-spin 8s linear 1 forwards;
+}
+
+/* Eight quarter turns, each swung quickly and then held.
+   `steps(8)` looked like nothing was happening at all: the frame is four
+   corner brackets in a square, so a 90deg rotation maps it exactly onto
+   itself. Only the travel between angles is visible, which a stepped timing
+   function throws away. Each tick is therefore a fast sweep followed by a
+   pause — the iris feel, but on screen this time. */
+@keyframes ret-cal-spin {
+  0%,    0% { rotate: 0deg; }
+  5%       { rotate: 90deg; }
+  12.5%    { rotate: 90deg; }
+  17.5%    { rotate: 180deg; }
+  25%      { rotate: 180deg; }
+  30%      { rotate: 270deg; }
+  37.5%    { rotate: 270deg; }
+  42.5%    { rotate: 360deg; }
+  50%      { rotate: 360deg; }
+  55%      { rotate: 450deg; }
+  62.5%    { rotate: 450deg; }
+  67.5%    { rotate: 540deg; }
+  75%      { rotate: 540deg; }
+  80%      { rotate: 630deg; }
+  87.5%    { rotate: 630deg; }
+  92.5%    { rotate: 720deg; }
+  100%     { rotate: 720deg; }
+}
+.reticle.is-cal .ret-c { animation: ret-cal-tick 2.4s steps(1) infinite; }
+.reticle.is-cal .ret-c.tr { animation-delay: 0.6s; }
+.reticle.is-cal .ret-c.br { animation-delay: 1.2s; }
+.reticle.is-cal .ret-c.bl { animation-delay: 1.8s; }
+@keyframes ret-cal-tick {
+  0%, 25%   { opacity: 1; }
+  26%, 100% { opacity: 0.22; }
+}
+
+/* B — DOZE: folds down to a breathing dot. */
+.reticle.is-doze .ret-box { width: 10px; height: 10px; }
+.reticle.is-doze .ret-c { opacity: 0; transition: opacity 0.5s ease; }
+.reticle.is-doze .ret-dot {
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  animation: ret-doze 2.6s ease-in-out infinite;
+}
+@keyframes ret-doze {
+  0%, 100% { opacity: 0.3; scale: 0.75; }
+  50%      { opacity: 1; scale: 1.25; }
+}
+.reticle.is-doze .ret-read { opacity: 0.45; }
+
+/* …and the startle when the visitor comes back. This is the point of DOZE. */
+.reticle.is-startle .ret-box {
+  animation: ret-startle 0.5s cubic-bezier(0.2, 1.6, 0.3, 1);
+}
+@keyframes ret-startle {
+  0%   { scale: 0.5; rotate: 0deg; }
+  35%  { scale: 1.45; rotate: -7deg; }
+  60%  { scale: 0.94; rotate: 5deg; }
+  100% { scale: 1; rotate: 0deg; }
+}
+
+/* C — PATROL: a wide, low box, so a sweep along an edge reads as a scanner
+   rather than as the same square sliding sideways. */
+.reticle.is-patrol .ret-box { width: 44px; height: 20px; }
+.reticle.is-patrol .ret-c { border-color: var(--telemetry); }
+.reticle.is-patrol .ret-read { color: var(--telemetry); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle.is-cal .ret-box,
+  .reticle.is-cal .ret-c,
+  .reticle.is-doze .ret-dot,
+  .reticle.is-startle .ret-box { animation: none; }
+}
+
+
+/* ---------- reticle: TERMINAL ----------
+   The frame widens into a small display and a job scrolls through it. The
+   screen sits inside `.ret-box`, so the four corner brackets end up framing
+   it — the reticle becomes a screen instead of sprouting one. */
+.reticle.is-term .ret-box {
+  width: 300px;
+  height: 96px;
+  transition: width 0.55s cubic-bezier(0.2, 0.9, 0.25, 1),
+              height 0.55s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.reticle.is-term .ret-dot { opacity: 0; }
+.reticle.is-term .ret-c { border-color: var(--telemetry); }
+
+.ret-screen {
+  position: absolute;
+  inset: 8px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--ground) 78%, transparent);
+  transition: opacity 0.3s ease 0.25s;
+}
+.reticle.is-term .ret-screen { opacity: 1; }
+
+/* Scanlines, so the panel reads as a display rather than a text box. */
+.ret-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    color-mix(in srgb, var(--ground) 55%, transparent) 2px 3px
+  );
+}
+
+.ret-lines {
+  display: block;
+  padding: 2px 8px;
+  white-space: pre;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  line-height: 13px;
+  letter-spacing: 0.04em;
+  color: var(--telemetry);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle.is-term .ret-box { transition: none; }
+}
+
+
+/* ---------- reticle: running without a pointer ----------
+   Shown while the mouse is outside the window. Held back a little so it is
+   legible as the deck working on its own rather than as the visitor's cursor
+   having wandered off by itself. */
+.reticle.is-ghost { opacity: 0.72; }
+.reticle.is-ghost .ret-read { opacity: 0.7; }
+
+
+/* ---------- reticle: FACE ----------
+   The frame opens into a square and the centre dot becomes a face. Every
+   expression is a shape change on three elements, eased by one transition —
+   the act's script only ever sets a mood, so the timing and the drawing stay
+   in separate places. */
+.reticle.is-face .ret-box {
+  width: 124px;
+  height: 124px;
+  transition: width 0.5s cubic-bezier(0.2, 1.3, 0.3, 1),
+              height 0.5s cubic-bezier(0.2, 1.3, 0.3, 1);
+}
+.reticle.is-face .ret-dot { opacity: 0; }
+
+.ret-face {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease 0.2s;
+}
+.reticle.is-face .ret-face { opacity: 1; }
+
+.ret-eye,
+.ret-mouth {
+  position: absolute;
+  background: var(--signal);
+  /* `all` is deliberate here: an expression changes height, radius, border and
+     colour at once, and listing them would only go stale as moods are added. */
+  transition: all 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.ret-eye {
+  top: 36%;
+  width: 15px;
+  height: 18px;
+  border-radius: 7px;
+}
+.ret-eye.l { left: 26%; }
+.ret-eye.r { right: 26%; }
+
+.ret-mouth {
+  left: 50%;
+  top: 65%;
+  width: 30px;
+  height: 4px;
+  margin-left: -15px;
+  border-radius: 3px;
+}
+
+/* ── moods ── */
+
+/* Shut. Used to boot up from and to close down into. */
+.reticle[data-mood="sleep"] .ret-eye { height: 4px; border-radius: 2px; }
+.reticle[data-mood="sleep"] .ret-mouth { width: 14px; margin-left: -7px; }
+
+/* Open and awake, with a blink of its own so it is never quite still. */
+.reticle[data-mood="idle"] .ret-eye { animation: ret-face-blink 3.4s ease-in-out infinite; }
+@keyframes ret-face-blink {
+  0%, 92%, 100% { height: 18px; }
+  95%           { height: 3px; }
+}
+
+.reticle[data-mood="look-l"] .ret-eye { translate: -6px 0; }
+.reticle[data-mood="look-r"] .ret-eye { translate: 6px 0; }
+
+/* Squinting. A dome, so the eyes read as the ^ ^ of a smile. */
+.reticle[data-mood="happy"] .ret-eye { height: 9px; border-radius: 9px 9px 0 0; }
+.reticle[data-mood="happy"] .ret-mouth,
+.reticle[data-mood="wink"] .ret-mouth {
+  height: 12px;
+  background: transparent;
+  border-bottom: 3px solid var(--signal);
+  border-radius: 0 0 16px 16px;
+}
+
+.reticle[data-mood="surprised"] .ret-eye { width: 19px; height: 19px; border-radius: 50%; }
+.reticle[data-mood="surprised"] .ret-mouth {
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid var(--signal);
+}
+
+.reticle[data-mood="wink"] .ret-eye.l { height: 4px; border-radius: 2px; }
+.reticle[data-mood="wink"] .ret-eye.r { height: 9px; border-radius: 9px 9px 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reticle.is-face .ret-box { transition: none; }
+  .reticle[data-mood="idle"] .ret-eye { animation: none; }
+}
+
+/* Media strip under a product's screen. The scrollbar is hidden because the
+   arrows either side are the control — a bar appearing under seven tiles and
+   not under five made the row look like it changed component. */
+.deck-strip { scrollbar-width: none; }
+.deck-strip::-webkit-scrollbar { display: none; }

@@ -1,0 +1,433 @@
+{
+ "projects": [
+  {
+   "_id": "6a819cbcbc2ebd68719aab5e",
+   "name": "Agenda",
+   "codename": "PROJECT_AGENDA",
+   "slug": "agenda",
+   "year": "2024",
+   "role": "Full-Stack Developer",
+   "status": "DEPLOYED",
+   "summary": "A modern task & schedule management platform with real-time sync.",
+   "description": "Agenda is a productivity hub that unifies daily tasks, calendar events, and collaborative notes into a single fluid interface. Built around a real-time data layer so teams can plan together without refresh friction.",
+   "stack": [
+    "Next.js",
+    "TypeScript",
+    "Tailwind CSS",
+    "PostgreSQL",
+    "Prisma"
+   ],
+   "highlights": [
+    "Designed and shipped the entire schema and REST layer.",
+    "Implemented optimistic UI updates for sub-100ms perceived latency.",
+    "Built a drag-and-drop weekly planner with keyboard accessibility."
+   ],
+   "tags": [
+    "Full-Stack",
+    "Productivity"
+   ],
+   "links": {
+    "repo": "https://github.com",
+    "live": ""
+   },
+   "featured": true,
+   "order": 0,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.241Z",
+   "updatedAt": "2026-08-17T14:01:45.606Z",
+   "blocks": [],
+   "coverImage": "https://res.cloudinary.com/ds2yryr8o/image/upload/v1786881771/portfolio/projects/hi2kocm1lkriv9u6xcxk.png",
+   "views": 0
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab5f",
+   "name": "ResumeHub",
+   "codename": "PROJECT_RESUMEHUB",
+   "slug": "resumehub",
+   "year": "2024",
+   "role": "Full-Stack Developer",
+   "status": "IN_ORBIT",
+   "summary": "An AI-assisted resume builder with live templates and export.",
+   "description": "ResumeHub helps job-seekers generate ATS-ready resumes from structured profile data. Templates are rendered server-side for pixel-accurate PDF exports, with an LLM layer that rewrites bullet points based on a target role.",
+   "stack": [
+    "Next.js",
+    "Node.js",
+    "Tailwind CSS",
+    "MongoDB",
+    "OpenAI API"
+   ],
+   "highlights": [
+    "Server-rendered PDF pipeline keeping fonts and layout consistent.",
+    "Prompt engineering for role-aware bullet point rewriting.",
+    "Sharable resume URLs with privacy-aware access tokens."
+   ],
+   "tags": [
+    "AI",
+    "Full-Stack"
+   ],
+   "links": {
+    "repo": "https://github.com",
+    "live": ""
+   },
+   "featured": true,
+   "order": 1,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.241Z",
+   "updatedAt": "2026-08-17T14:39:04.957Z",
+   "blocks": [],
+   "coverImage": ""
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab60",
+   "name": "Tech Balance",
+   "codename": "PROJECT_TECH_BALANCE",
+   "slug": "tech-balance",
+   "year": "2023",
+   "role": "Frontend Developer",
+   "status": "ARCHIVED",
+   "summary": "A dashboard surfacing personal screen-time & focus analytics.",
+   "description": "Tech Balance ingests device usage data and visualises focus vs distraction patterns. The goal: nudge healthier digital habits with friendly weekly reports rather than guilt-driven alerts.",
+   "stack": [
+    "React",
+    "TypeScript",
+    "Recharts",
+    "Node.js",
+    "MySQL"
+   ],
+   "highlights": [
+    "Built composable chart primitives on top of Recharts.",
+    "Authored the weekly digest engine summarising usage trends.",
+    "Reduced first-paint by 40% through route-level code splitting."
+   ],
+   "tags": [
+    "Frontend",
+    "Data Viz"
+   ],
+   "links": {
+    "repo": "https://github.com",
+    "live": ""
+   },
+   "featured": true,
+   "order": 2,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.241Z",
+   "updatedAt": "2026-08-17T14:39:05.206Z",
+   "blocks": [],
+   "coverImage": ""
+  },
+  {
+   "_id": "6a81a469b2f7965ecdae1d4a",
+   "name": "New project-",
+   "codename": "",
+   "slug": "new-project",
+   "year": "",
+   "role": "",
+   "status": "DEPLOYED",
+   "summary": "",
+   "description": "",
+   "stack": [],
+   "highlights": [],
+   "tags": [],
+   "links": {
+    "repo": "",
+    "live": ""
+   },
+   "coverImage": "",
+   "featured": false,
+   "order": 3,
+   "published": true,
+   "blocks": [],
+   "createdAt": "2026-08-16T11:52:09.151Z",
+   "updatedAt": "2026-08-17T13:59:47.476Z",
+   "__v": 0
+  }
+ ],
+ "services": [
+  {
+   "_id": "6a819cbcbc2ebd68719aab5a",
+   "code": "WEB",
+   "name": "Web Application Development",
+   "tagline": "Full-stack apps that ship and scale.",
+   "description": "End-to-end product delivery: from data modelling and API design to a polished, responsive interface. Comfortable owning a feature from blank file to production deployment.",
+   "deliverables": [
+    "Next.js / React frontends with TypeScript",
+    "REST and server actions backed by relational or document databases",
+    "Authentication, role-based access, and audit logging"
+   ],
+   "order": 0,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.163Z",
+   "updatedAt": "2026-08-16T11:50:55.814Z",
+   "linkedProjectIds": [
+    "6a819cbcbc2ebd68719aab5e",
+    "6a819cbcbc2ebd68719aab5f"
+   ]
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab5b",
+   "code": "UI",
+   "name": "UI Engineering & Motion",
+   "tagline": "Interfaces that feel alive.",
+   "description": "Design-conscious frontend work with a focus on motion, micro-interactions, and scroll choreography that stays readable rather than decorative.",
+   "deliverables": [
+    "Component systems with Tailwind CSS",
+    "GSAP and Framer Motion animation choreography",
+    "WebGL scenes integrated cleanly with React state"
+   ],
+   "order": 1,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.163Z",
+   "updatedAt": "2026-08-16T11:50:55.814Z"
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab5c",
+   "code": "QA",
+   "name": "QA Automation & Tooling",
+   "tagline": "Confidence shipped alongside code.",
+   "description": "Build automated test suites and internal tooling that keep release cadence high without sacrificing reliability.",
+   "deliverables": [
+    "End-to-end suites with Selenium and Robot Framework",
+    "CI pipelines reporting test health on every push",
+    "Internal dashboards for QA visibility"
+   ],
+   "order": 2,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.163Z",
+   "updatedAt": "2026-08-16T11:50:55.814Z"
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab5d",
+   "code": "ADVISORY",
+   "name": "Technical Consulting",
+   "tagline": "A second pair of eyes for early-stage builds.",
+   "description": "Architecture reviews, stack selection, and pragmatic guidance for student teams and early product squads.",
+   "deliverables": [
+    "Stack and hosting recommendations",
+    "Codebase walkthroughs with prioritised improvements",
+    "Mentorship sessions on modern web tooling"
+   ],
+   "order": 3,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.163Z",
+   "updatedAt": "2026-08-16T11:50:55.814Z"
+  }
+ ],
+ "experiences": [
+  {
+   "_id": "6a819cbcbc2ebd68719aab61",
+   "role": "Full-Stack Developer Intern",
+   "organization": "TBD Tech Studio",
+   "type": "INTERNSHIP",
+   "time": "2025",
+   "location": "Bangkok, Thailand",
+   "summary": "Joined a small product team to ship customer-facing features across the stack.",
+   "achievements": [
+    "Delivered 3 production features end-to-end during the internship.",
+    "Improved page load by 30% through targeted query and bundle audits.",
+    "Wrote internal docs that onboarded the next intern in under a week."
+   ],
+   "stack": [
+    "Next.js",
+    "TypeScript",
+    "PostgreSQL",
+    "Docker"
+   ],
+   "order": 0,
+   "published": false,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.358Z",
+   "updatedAt": "2026-08-17T12:04:22.773Z"
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab62",
+   "role": "Lead Developer — Senior Project",
+   "organization": "KMUTT, Applied Computer Science",
+   "type": "ACADEMIC",
+   "time": "2024 - 2025",
+   "location": "KMUTT Campus",
+   "summary": "Led a 4-person team building a data-driven web platform as our final-year capstone.",
+   "achievements": [
+    "Owned system architecture and code review standards.",
+    "Designed the database schema and API contracts for the team.",
+    "Presented the project to faculty and industry reviewers."
+   ],
+   "stack": [
+    "React",
+    "Node.js",
+    "MySQL"
+   ],
+   "order": 1,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.358Z",
+   "updatedAt": "2026-08-17T12:04:22.773Z"
+  },
+  {
+   "_id": "6a819cbcbc2ebd68719aab63",
+   "role": "QA Automation — Coursework",
+   "organization": "KMUTT, Software Testing",
+   "type": "ACADEMIC",
+   "time": "2024",
+   "location": "KMUTT Campus",
+   "summary": "Authored automated test suites for a class-wide web application project.",
+   "achievements": [
+    "Built a Robot Framework suite covering core user journeys.",
+    "Integrated Selenium scripts into a basic CI workflow."
+   ],
+   "stack": [
+    "Robot Framework",
+    "Selenium",
+    "Python"
+   ],
+   "order": 2,
+   "published": true,
+   "__v": 0,
+   "createdAt": "2026-08-16T11:19:24.358Z",
+   "updatedAt": "2026-08-17T12:04:22.773Z"
+  }
+ ],
+ "products": [
+  {
+   "_id": "6a83eb10a9aebbb1d18c33c1",
+   "name": "OrbitKey",
+   "slug": "orbitkey",
+   "tagline": "A radial launcher that orbits your cursor.",
+   "description": "A desktop action ring built with Tauri and React. Summon it anywhere, spin to the action you want, release. Profiles, custom animations and a control panel that stays out of the way.",
+   "platforms": [
+    "WINDOWS",
+    "MACOS"
+   ],
+   "status": "LIVE",
+   "icon": "",
+   "screenshots": [],
+   "demoVideo": "",
+   "deviceType": "DESKTOP",
+   "liveUrl": "",
+   "embedLive": false,
+   "githubRepo": "ChampMo/OrbitKey",
+   "version": "",
+   "downloads": [],
+   "installNotes": "macOS: if you see a \"damaged app\" or \"unidentified developer\" warning, run  xattr -cr /Applications/OrbitKey.app  in Terminal after installing, or right-click the app and choose Open.",
+   "projectId": "6a819cbcbc2ebd68719aab5e",
+   "featured": true,
+   "order": 0,
+   "published": true,
+   "createdAt": "2026-08-18T05:18:08.172Z",
+   "updatedAt": "2026-08-18T07:02:57.188Z",
+   "backdropHtml": "<script type=\"application/json\" id=\"signal-theme\">\n{\n  \"dark\": {\n    \"ground\":     \"#08080a\",\n    \"panel\":      \"#121218\",\n    \"panel-2\":    \"#1b1b26\",\n    \"grid\":       \"#282840\",\n    \"ink\":        \"#ecebf7\",\n    \"ink-muted\":  \"#9791b8\",\n    \"signal\":     \"#6b53f5\",\n    \"on-signal\":  \"#ffffff\",\n    \"telemetry\":  \"#5ad1e6\"\n  },\n  \"light\": {\n    \"ground\":     \"#fdf3ea\",\n    \"panel\":      \"#fffaf4\",\n    \"panel-2\":    \"#fbeade\",\n    \"grid\":       \"#f0dbc6\",\n    \"ink\":        \"#33241a\",\n    \"ink-muted\":  \"#8a7159\",\n    \"signal\":     \"#f0873a\",\n    \"on-signal\":  \"#3a2109\",\n    \"telemetry\":  \"#3f7ca8\"\n  }\n}\n</script>\n\n<style>\n  /* Transparent: the panel behind supplies the ground colour from the tokens\n     above, so there is only ever one place the background is decided. No\n     gradients here — the field stays flat and the only thing on it is dots. */\n  html, body { background: transparent; }\n\n  /* Oversized on every side so the drift can never pull an edge into view. */\n  .dots {\n    position: absolute;\n    inset: -60px;\n    background-image: radial-gradient(\n      color-mix(in srgb, var(--ink) 22%, transparent) 1px,\n      transparent 1.1px\n    );\n    background-size: 30px 30px;\n    will-change: transform;\n  }\n</style>\n\n<div class=\"dots\" id=\"dots\"></div>\n\n<script>\n  (function () {\n    var dots = document.getElementById(\"dots\");\n    if (matchMedia(\"(prefers-reduced-motion: reduce)\").matches) return;\n\n    /* The pointer arrives from the parent page. This frame never receives\n       mouse events of its own — it must not intercept clicks meant for the\n       download button — so the coordinates are posted in. */\n    var tx = 0.5, ty = 0.5, x = 0.5, y = 0.5;\n\n    addEventListener(\"message\", function (e) {\n      var p = e.data && e.data.signalPointer;\n      if (!p) return;\n      tx = p.x;\n      ty = p.y;\n    });\n\n    function frame() {\n      /* Eased follow, and inverted: the grid slides away from the cursor\n         rather than with it, which is what reads as depth instead of as the\n         background being dragged around. */\n      x += (tx - x) * 0.04;\n      y += (ty - y) * 0.04;\n\n      dots.style.transform =\n        \"translate(\" +\n        ((0.5 - x) * 26).toFixed(2) + \"px,\" +\n        ((0.5 - y) * 26).toFixed(2) + \"px)\";\n\n      requestAnimationFrame(frame);\n    }\n\n    requestAnimationFrame(frame);\n  })();\n</script>",
+   "backdropOpacity": 100
+  },
+  {
+   "_id": "6a83f6a1bcee255c0e0b523d",
+   "name": "New product",
+   "slug": "new-product",
+   "tagline": "",
+   "description": "",
+   "platforms": [],
+   "status": "LIVE",
+   "icon": "",
+   "screenshots": [],
+   "demoVideo": "",
+   "deviceType": "DESKTOP",
+   "liveUrl": "",
+   "embedLive": false,
+   "githubRepo": "",
+   "version": "",
+   "installNotes": "",
+   "projectId": "6a819cbcbc2ebd68719aab5f",
+   "featured": false,
+   "order": 1,
+   "published": true,
+   "downloads": [],
+   "createdAt": "2026-08-18T06:07:29.302Z",
+   "updatedAt": "2026-08-18T06:08:13.451Z",
+   "__v": 0
+  }
+ ],
+ "tags": [
+  {
+   "_id": "6a82fb6ea5ad30c2c05c05d7",
+   "name": "Next.js",
+   "kind": "tech",
+   "__v": 0,
+   "createdAt": "2026-08-17T12:15:42.243Z",
+   "updatedAt": "2026-08-17T12:15:42.243Z"
+  },
+  {
+   "_id": "6a82fb6ea5ad30c2c05c05d8",
+   "name": "TypeScript",
+   "kind": "tech",
+   "__v": 0,
+   "createdAt": "2026-08-17T12:15:42.243Z",
+   "updatedAt": "2026-08-17T12:15:42.243Z"
+  },
+  {
+   "_id": "6a82fb6ea5ad30c2c05c05d9",
+   "name": "MongoDB",
+   "kind": "tech",
+   "__v": 0,
+   "createdAt": "2026-08-17T12:15:42.243Z",
+   "updatedAt": "2026-08-17T12:15:42.243Z"
+  },
+  {
+   "_id": "6a82fb6ea5ad30c2c05c05da",
+   "name": "Full-Stack",
+   "kind": "tag",
+   "__v": 0,
+   "createdAt": "2026-08-17T12:15:42.243Z",
+   "updatedAt": "2026-08-17T12:15:42.243Z"
+  },
+  {
+   "_id": "6a82fda0cd8b471837597a75",
+   "name": "Productivity",
+   "kind": "tag",
+   "usageCount": 0,
+   "createdAt": "2026-08-17T12:25:04.223Z",
+   "updatedAt": "2026-08-17T12:25:04.223Z",
+   "__v": 0
+  },
+  {
+   "_id": "6a82fda0cd8b471837597a76",
+   "name": "Tailwind CSS",
+   "kind": "tech",
+   "usageCount": 0,
+   "createdAt": "2026-08-17T12:25:04.229Z",
+   "updatedAt": "2026-08-17T12:25:04.229Z",
+   "__v": 0
+  },
+  {
+   "_id": "6a82fda0cd8b471837597a77",
+   "name": "PostgreSQL",
+   "kind": "tech",
+   "usageCount": 0,
+   "createdAt": "2026-08-17T12:25:04.235Z",
+   "updatedAt": "2026-08-17T12:25:04.235Z",
+   "__v": 0
+  },
+  {
+   "_id": "6a82fda0cd8b471837597a78",
+   "name": "Prisma",
+   "kind": "tech",
+   "usageCount": 0,
+   "createdAt": "2026-08-17T12:25:04.250Z",
+   "updatedAt": "2026-08-17T12:25:04.250Z",
+   "__v": 0
+  },
+  {
+   "_id": "6a82fdd4cd8b471837597a7a",
+   "name": "Docker",
+   "kind": "tech",
+   "usageCount": 0,
+   "createdAt": "2026-08-17T12:25:56.735Z",
+   "updatedAt": "2026-08-17T12:25:56.735Z",
+   "__v": 0
+  }
+ ]
+}

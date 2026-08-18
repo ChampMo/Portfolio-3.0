@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+/* ==================================================================
+   SIGNAL — design tokens
+   Flight-deck telemetry identity. Dark-first; light theme is a
+   deliberate second design, not an inversion.
+   Theme resolution has three states:
+     - bare :root            → dark (the default look)
+     - prefers-color-scheme  → light, unless .dark is stamped
+     - explicit .dark/.light → wins over the OS in both directions
+   ================================================================== */
+
+:root {
+  /* ground & surfaces */
+  --ground: #12110d;
+  --panel: #1b1914;
+  --panel-2: #232019;
+  --grid: #33301f;
+
+  /* ink */
+  --ink: #f2ede2;
+  --ink-muted: #8c8672;
+
+  /* accents — one hero accent, telemetry used sparingly */
+  --signal: #ff8a34;
+  --on-signal: #12110d;
+  --telemetry: #5fb8c4;
+
+  /* semantic (admin feedback only — never decorative) */
+  --ok: #6fbf73;
+  --warn: #e0a336;
+  --danger: #e2564b;
+
+  /* geometry */
+  --radius-card: 14px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --pad-x: 6vw;
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    --ground: #f5f1e6;
+    --panel: #fbf8f0;
+    --panel-2: #f0ead9;
+    --grid: #dcd4be;
+    --ink: #221f17;
+    --ink-muted: #6b6552;
+    --signal: #c65a0a;
+    --on-signal: #fbf3e6;
+    --telemetry: #2e7480;
+    --ok: #3f7d45;
+    --warn: #8a6212;
+    --danger: #a5352b;
+    color-scheme: light;
+  }
+}
+
+:root.light {
+  --ground: #f5f1e6;
+  --panel: #fbf8f0;
+  --panel-2: #f0ead9;
+  --grid: #dcd4be;
+  --ink: #221f17;
+  --ink-muted: #6b6552;
+  --signal: #c65a0a;
+  --on-signal: #fbf3e6;
+  --telemetry: #2e7480;
+  --ok: #3f7d45;
+  --warn: #8a6212;
+  --danger: #a5352b;
+  color-scheme: light;
+}
+
+:root.dark {
+  --ground: #12110d;
+  --panel: #1b1914;
+  --panel-2: #232019;
+  --grid: #33301f;
+  --ink: #f2ede2;
+  --ink-muted: #8c8672;
+  --signal: #ff8a34;
+  --on-signal: #12110d;
+  --telemetry: #5fb8c4;
+  --ok: #6fbf73;
+  --warn: #e0a336;
+  --danger: #e2564b;
+  color-scheme: dark;
+}
+
+/* expose tokens as Tailwind utilities: bg-ground, text-signal, border-grid… */
+@theme inline {
+  --color-ground: var(--ground);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-grid: var(--grid);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-signal: var(--signal);
+  --color-on-signal: var(--on-signal);
+  --color-telemetry: var(--telemetry);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+
+  --font-display: var(--font-big-shoulders), ui-sans-serif, sans-serif;
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-card: 14px;
+  --radius-pill: 999px;
+}
+
+/* ---------------- base ---------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+}
+
+/* scrollbar */
+* {
+  scrollbar-color: var(--grid) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--grid);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
+}
+
+/* Motion is decorative here: every scroll/boot effect must degrade to a
+   readable static page, so kill transforms and animations wholesale. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* ---------- theme wipe ----------
+   The API's default is a cross-fade between the two snapshots. That is
+   cancelled here so the only visible motion is the clip-path circle animated
+   in lib/site/themeWipe.ts, and the new palette is stacked above the old one
+   so the circle reveals rather than erases. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 0; }
+::view-transition-new(root) { z-index: 1; }
+
+
+/* ---------- admin: sticky, collapsing page header ---------- */
+:root {
+  /* Height the header settles at once collapsed. The list column below pins
+     itself to exactly this, so the two never overlap. */
+  --admin-head-h: 68px;
+}
+
+.admin-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  /* Spans the gutters of <main> so nothing scrolls past in the margins. */
+  margin: 0 -1.5rem 2.5rem;
+  padding: 2rem 1.5rem 1.25rem;
+  background: color-mix(in srgb, var(--ground) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid transparent;
+  transition: padding 0.28s ease, border-color 0.28s ease, margin-bottom 0.28s ease;
+}
+
+@media (min-width: 768px) {
+  .admin-head {
+    margin-left: -2.5rem;
+    margin-right: -2.5rem;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    padding-top: 3rem;
+  }
+}
+
+.admin-head-eyebrow {
+  max-height: 3rem;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+  transition: max-height 0.28s ease, margin-bottom 0.28s ease, opacity 0.2s ease;
+}
+
+.admin-head-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  transition: font-size 0.28s ease;
+}
+
+/* ── collapsed ── */
+.admin-head.is-stuck {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+  margin-bottom: 1.75rem;
+  border-bottom-color: var(--grid);
+}
+.admin-head.is-stuck .admin-head-eyebrow {
+  max-height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+}
+.admin-head.is-stuck .admin-head-title { font-size: 1.4rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-head,
+  .admin-head-eyebrow,
+  .admin-head-title { transition: none; }
+}
+
+/* ---------- admin: the item list scrolls on its own ---------- */
+@media (min-width: 1024px) {
+  .admin-list {
+    position: sticky;
+    top: calc(var(--admin-head-h) + 1rem);
+    max-height: calc(100svh - var(--admin-head-h) - 3rem);
+    overflow-y: auto;
+    /* Room for the last row's focus ring against the scroll edge. */
+    padding-right: 4px;
+    scrollbar-width: thin;
+  }
+}

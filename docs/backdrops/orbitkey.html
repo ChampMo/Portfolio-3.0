@@ -1,0 +1,83 @@
+<script type="application/json" id="signal-theme">
+{
+  "dark": {
+    "ground":     "#08080a",
+    "panel":      "#121218",
+    "panel-2":    "#1b1b26",
+    "grid":       "#282840",
+    "ink":        "#ecebf7",
+    "ink-muted":  "#9791b8",
+    "signal":     "#6b53f5",
+    "on-signal":  "#ffffff",
+    "telemetry":  "#5ad1e6"
+  },
+  "light": {
+    "ground":     "#fdf3ea",
+    "panel":      "#fffaf4",
+    "panel-2":    "#fbeade",
+    "grid":       "#f0dbc6",
+    "ink":        "#33241a",
+    "ink-muted":  "#8a7159",
+    "signal":     "#f0873a",
+    "on-signal":  "#3a2109",
+    "telemetry":  "#3f7ca8"
+  }
+}
+</script>
+
+<style>
+  /* Transparent: the panel behind supplies the ground colour from the tokens
+     above, so there is only ever one place the background is decided. No
+     gradients here — the field stays flat and the only thing on it is dots. */
+  html, body { background: transparent; }
+
+  /* Oversized on every side so the drift can never pull an edge into view. */
+  .dots {
+    position: absolute;
+    inset: -60px;
+    background-image: radial-gradient(
+      color-mix(in srgb, var(--ink) 22%, transparent) 1px,
+      transparent 1.1px
+    );
+    background-size: 30px 30px;
+    will-change: transform;
+  }
+</style>
+
+<div class="dots" id="dots"></div>
+
+<script>
+  (function () {
+    var dots = document.getElementById("dots");
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    /* The pointer arrives from the parent page. This frame never receives
+       mouse events of its own — it must not intercept clicks meant for the
+       download button — so the coordinates are posted in. */
+    var tx = 0.5, ty = 0.5, x = 0.5, y = 0.5;
+
+    addEventListener("message", function (e) {
+      var p = e.data && e.data.signalPointer;
+      if (!p) return;
+      tx = p.x;
+      ty = p.y;
+    });
+
+    function frame() {
+      /* Eased follow, and inverted: the grid slides away from the cursor
+         rather than with it, which is what reads as depth instead of as the
+         background being dragged around. */
+      x += (tx - x) * 0.04;
+      y += (ty - y) * 0.04;
+
+      dots.style.transform =
+        "translate(" +
+        ((0.5 - x) * 26).toFixed(2) + "px," +
+        ((0.5 - y) * 26).toFixed(2) + "px)";
+
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  })();
+</script>

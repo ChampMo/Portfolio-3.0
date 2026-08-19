@@ -342,7 +342,7 @@ function Panel({ unit, n, total }: { unit: DeckUnit; n: number; total: number })
     >
       <ProductBackdrop html={product.backdropHtml} opacity={product.backdropOpacity} />
 
-      <div className="relative z-[1] mx-auto grid max-w-[1240px] items-center gap-x-14 gap-y-10 px-[var(--pad-x)] py-14 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]">
+      <div className="relative z-[1] mx-auto grid max-w-[1240px] grid-cols-1 items-center gap-x-14 gap-y-10 px-[var(--pad-x)] py-14 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]">
         {/* ── pitch ── */}
         <div className="min-w-0">
           <p className="mb-5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
@@ -796,7 +796,7 @@ function DeviceFrame({ product }: { product: ProductDoc }) {
   }
 
   return (
-    <div ref={ref} className={phone ? "mx-auto w-[min(300px,80%)]" : "w-full"}>
+    <div ref={ref} className={phone ? "mx-auto w-[min(300px,80%)]" : "w-full min-w-0"}>
       <div
         className={`device relative rounded-[20px] border-2 border-grid bg-panel p-2 ${
           on ? "is-on" : ""
@@ -902,7 +902,7 @@ function DeviceFrame({ product }: { product: ProductDoc }) {
 
           <div
             ref={stripRef}
-            className="deck-strip flex flex-1 gap-2 overflow-x-auto scroll-smooth pb-1"
+            className="deck-strip flex min-w-0 flex-1 gap-2 overflow-x-auto scroll-smooth pb-1"
           >
             {media.map((m, i) => {
               const active = i === sel;

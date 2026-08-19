@@ -44,7 +44,7 @@ export default async function ProductsPage() {
 
       <div className="flex min-h-svh flex-col bg-ground">
         <header className="shrink-0 border-b border-grid">
-          <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-4 px-[var(--pad-x)] py-5">
+          <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-[var(--pad-x)] py-5 sm:gap-4">
             {/* "previous", not "origin": the bay is reachable from the hero,
                 the nav and a project's own page, so back means undo the last
                 move — not walk out to a listing the visitor never saw. The
@@ -56,12 +56,13 @@ export default async function ProductsPage() {
               fallbackLabel="Back to deck"
             />
 
-            <span className="font-mono text-[11px] tracking-[0.14em] text-signal">
+            <span className="hidden whitespace-nowrap font-mono text-[11px] tracking-[0.14em] text-signal sm:inline">
               DEPLOYMENT BAY
             </span>
             <div className="flex items-center gap-4">
-              <span className="font-mono text-[11px] tabular-nums tracking-[0.12em] text-telemetry">
-                {String(units.length).padStart(2, "0")} UNITS ONLINE
+              <span className="whitespace-nowrap font-mono text-[11px] tabular-nums tracking-[0.12em] text-telemetry">
+                {String(units.length).padStart(2, "0")}
+                <span className="hidden sm:inline"> UNITS ONLINE</span>
               </span>
               <ThemeToggle />
             </div>

@@ -1,7 +1,20 @@
 <style>
-  /* Transparent: the panel behind supplies the ground colour. */
+  /* Transparent all the way down. The panel behind supplies the ground
+     colour, and the wrapper this frame sits in carries the product's opacity
+     — so anything opaque in here does not sit *behind* the panel, it tints
+     the whole panel through that opacity. `color-scheme: normal` is part of
+     the same guard: a frame that resolves to a concrete light or dark scheme
+     is given an opaque canvas by the browser, and `background: transparent`
+     cannot undo it. */
+  :root { color-scheme: normal; }
   html, body { background: transparent; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
 </style>
 
 <canvas id="c"></canvas>
@@ -25,17 +38,36 @@
     }
     readPalette();
 
+    /**
+     * Sizes the bitmap to the element.
+     *
+     * Watched rather than measured once. This frame is built the moment its
+     * panel scrolls into view, and on that first pass the canvas can still
+     * report zero — at which point `Math.max(1, ...)` quietly produced a 1x1
+     * bitmap that nothing ever corrected, because an iframe's window never
+     * fires `resize` when only its element changes size. CSS then stretched
+     * that single pixel across the whole panel, and since all thirty-two
+     * nodes landed on it their alpha stacked into a solid block: the panel
+     * appeared washed flat in `--ink-muted` rather than showing a backdrop.
+     *
+     * Reloading directly onto the panel hid it — the layout was already
+     * settled when the frame was built, so the first measurement was right.
+     */
     var w = 0, h = 0, dpr = 1;
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       w = canvas.clientWidth;
       h = canvas.clientHeight;
-      canvas.width = Math.max(1, Math.round(w * dpr));
-      canvas.height = Math.max(1, Math.round(h * dpr));
+      if (!w || !h) return;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     resize();
     addEventListener("resize", resize);
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(resize).observe(canvas);
+    }
 
     /* The pointer arrives from the parent page. This frame never receives
        mouse events of its own, so the coordinates are posted in. */
@@ -71,6 +103,8 @@
     }
 
     function paint() {
+      // Nothing to draw into yet; the observer will call back once there is.
+      if (!w || !h) return;
       ctx.clearRect(0, 0, w, h);
 
       // Links first, so nodes sit on top of their own threads.

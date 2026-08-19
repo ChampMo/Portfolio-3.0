@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="SIGNAL">
+  <!--
+    The site's own reticle cursor, used as its mark.
+
+    Geometry is the cursor's, re-proportioned for a tile: four L-brackets
+    implying a square, with a square dot at the centre. Every edge lands on an
+    even unit of the 32-wide grid, so at the sizes a favicon is actually drawn
+    at — 16, 32, 48 — each stroke maps to whole pixels instead of straddling
+    two and going soft. The arms are a little longer and the dot a little
+    heavier than on screen, because at 16px the cursor's own hairlines would
+    disappear.
+  -->
+  <rect width="32" height="32" rx="7" fill="#12110d"/>
+  <g fill="none" stroke="#ff8a34" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter">
+    <path d="M14 9H9v5"/>
+    <path d="M18 9h5v5"/>
+    <path d="M14 23H9v-5"/>
+    <path d="M18 23h5v-5"/>
+  </g>
+  <rect x="14" y="14" width="4" height="4" fill="#ff8a34"/>
+</svg>

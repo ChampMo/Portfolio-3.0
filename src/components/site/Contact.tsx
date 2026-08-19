@@ -21,7 +21,7 @@ export default function Contact({ identity }: { identity: IdentityDoc | null }) 
   return (
     <section
       id="contact"
-      className="relative overflow-hidden border-t border-grid px-[var(--pad-x)] py-44 text-center"
+      className="relative overflow-hidden border-t border-grid px-[var(--pad-x)] py-24 md:py-44 text-center"
     >
       <div className="grid-bg !inset-[-10%] opacity-40" data-px="0.06" aria-hidden="true" />
       <div

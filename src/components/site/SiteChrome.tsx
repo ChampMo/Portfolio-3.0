@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { slideTo } from "./SlideTransition";
+import { PALETTE_EVENT } from "./CommandPalette";
 
 const SECTIONS = [
   { id: "about", idx: "01", label: "IDENTITY" },
@@ -72,11 +73,20 @@ export default function SiteChrome({ initials }: { initials: string }) {
         }`}
         style={{ background: "color-mix(in srgb, var(--ground) 82%, transparent)" }}
       >
-        <div className="text-[13px] tracking-[0.12em] tabular-nums">
+        {/* Never wraps. Squeezed by the overflowing nav it broke into three
+            stacked lines — "MS", "/", "01" — which is what pushed the header
+            from 76px to 104px tall on a phone. */}
+        <div className="shrink-0 whitespace-nowrap text-[13px] tracking-[0.12em] tabular-nums">
           {initials} <span className="text-telemetry">/ {current}</span>
         </div>
         <div className="flex items-center gap-5 sm:gap-7">
-          <nav className="flex gap-4 sm:gap-[26px]">
+          {/* Six links need 401px of the 330px a phone has, so they used to
+              run 67px off the side of the screen with Contact half cut off.
+              Below `sm` they are replaced by the button beside this, which
+              opens the command palette — the palette already lists every
+              section and project, and until now it was reachable only by ⌘K
+              or "/", neither of which exists on a phone. */}
+          <nav className="hidden gap-4 sm:flex sm:gap-[26px]">
             {NAV.map((n) => (
               <a
                 key={n.href}
@@ -97,6 +107,17 @@ export default function SiteChrome({ initials }: { initials: string }) {
               </a>
             ))}
           </nav>
+
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event(PALETTE_EVENT))}
+            aria-label="Open the navigation menu"
+            data-cursor="MENU"
+            className="shrink-0 rounded-full border border-grid px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:border-signal hover:text-signal sm:hidden"
+          >
+            Menu
+          </button>
+
           <ThemeToggle />
         </div>
       </header>

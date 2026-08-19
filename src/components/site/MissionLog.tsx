@@ -13,7 +13,7 @@ export default function MissionLog({
   const s = identity?.sections?.experience;
 
   return (
-    <section id="log" className="relative mx-auto max-w-[1240px] px-[var(--pad-x)] py-36">
+    <section id="log" className="relative mx-auto max-w-[1240px] px-[var(--pad-x)] py-20 md:py-36">
       <span className="ghost-num" data-px="0.16" aria-hidden="true">05</span>
 
       <div className="relative z-[1]">

@@ -1,0 +1,148 @@
+<style>
+  /* Transparent: the panel behind supplies the ground colour. */
+  html, body { background: transparent; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+
+<canvas id="c"></canvas>
+
+<script>
+  (function () {
+    var canvas = document.getElementById("c");
+    var ctx = canvas.getContext("2d");
+    var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* Canvas cannot read `var(--signal)` the way CSS can, so the palette is
+       resolved from the document and re-resolved whenever the parent posts a
+       new one — otherwise the nodes keep their old colours through a theme
+       change and end up invisible against the new ground. */
+    var gridC = "", mutedC = "", signalC = "";
+    function readPalette() {
+      var css = getComputedStyle(document.documentElement);
+      gridC = css.getPropertyValue("--grid").trim() || "#33301f";
+      mutedC = css.getPropertyValue("--ink-muted").trim() || "#8c8672";
+      signalC = css.getPropertyValue("--signal").trim() || "#ff8a34";
+    }
+    readPalette();
+
+    var w = 0, h = 0, dpr = 1;
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      canvas.width = Math.max(1, Math.round(w * dpr));
+      canvas.height = Math.max(1, Math.round(h * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    addEventListener("resize", resize);
+
+    /* The pointer arrives from the parent page. This frame never receives
+       mouse events of its own, so the coordinates are posted in. */
+    var tx = 0.5, ty = 0.5, mx = 0.5, my = 0.5;
+
+    addEventListener("message", function (e) {
+      var d = e.data || {};
+      if (d.signalPointer) {
+        tx = d.signalPointer.x;
+        ty = d.signalPointer.y;
+      }
+      if (typeof d.signalPalette === "string") setTimeout(readPalette, 0);
+    });
+
+    /* Linking is the expensive part: every node is measured against every
+       other, so the cost is the square of this number. Thirty-two is 496
+       comparisons a frame — cheap — where doubling it would be nearly two
+       thousand, and the deck can have several panels running at once. */
+    var COUNT = 32;
+    // Squared throughout, so no frame ever needs a square root.
+    var LINK2 = 0.052;
+    var PULL2 = 0.045;
+
+    var nodes = [];
+    for (var i = 0; i < COUNT; i++) {
+      nodes.push({
+        x: Math.random(),
+        y: Math.random(),
+        vx: (Math.random() - 0.5) * 0.0007,
+        vy: (Math.random() - 0.5) * 0.0007,
+        r: 1 + Math.random() * 1.4,
+      });
+    }
+
+    function paint() {
+      ctx.clearRect(0, 0, w, h);
+
+      // Links first, so nodes sit on top of their own threads.
+      ctx.lineWidth = 1;
+      for (var i = 0; i < COUNT; i++) {
+        for (var j = i + 1; j < COUNT; j++) {
+          var ax = nodes[i].x - nodes[j].x;
+          var ay = nodes[i].y - nodes[j].y;
+          var d2 = ax * ax + ay * ay;
+          if (d2 > LINK2) continue;
+
+          // Fade with distance so links appear and dissolve rather than
+          // switching on at a threshold.
+          ctx.globalAlpha = (1 - d2 / LINK2) * 0.5;
+          ctx.strokeStyle = gridC;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x * w, nodes[i].y * h);
+          ctx.lineTo(nodes[j].x * w, nodes[j].y * h);
+          ctx.stroke();
+        }
+      }
+
+      for (var k = 0; k < COUNT; k++) {
+        var n = nodes[k];
+        var dx = n.x - mx;
+        var dy = n.y - my;
+        var near = dx * dx + dy * dy < PULL2;
+
+        ctx.globalAlpha = near ? 0.9 : 0.42;
+        ctx.fillStyle = near ? signalC : mutedC;
+        ctx.beginPath();
+        ctx.arc(n.x * w, n.y * h, near ? n.r * 1.5 : n.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    if (reduce) {
+      paint();
+      return;
+    }
+
+    function frame() {
+      mx += (tx - mx) * 0.05;
+      my += (ty - my) * 0.05;
+
+      for (var i = 0; i < COUNT; i++) {
+        var n = nodes[i];
+        n.x += n.vx;
+        n.y += n.vy;
+
+        // Bounced rather than wrapped: a node crossing an edge would take its
+        // links with it and they would snap across the whole panel.
+        if (n.x < 0 || n.x > 1) n.vx *= -1;
+        if (n.y < 0 || n.y > 1) n.vy *= -1;
+
+        // A gentle draw towards the pointer, capped so nothing collapses into
+        // it — the cluster leans, it does not collect.
+        var dx = mx - n.x;
+        var dy = my - n.y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 < PULL2 && d2 > 0.0004) {
+          n.x += dx * 0.006;
+          n.y += dy * 0.006;
+        }
+      }
+
+      paint();
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  })();
+</script>

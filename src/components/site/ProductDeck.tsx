@@ -21,8 +21,7 @@ import { safeHref, youtubeId, youtubeEmbed } from "@/lib/content/url";
 import Lightbox from "./Lightbox";
 import { lockScroll } from "@/lib/site/scrollLock";
 import ProductBackdrop from "./ProductBackdrop";
-import { extractTheme } from "@/lib/content/backdrop";
-import { useResolvedTheme } from "@/lib/site/useResolvedTheme";
+import { extractTheme, panelThemeCss } from "@/lib/content/backdrop";
 
 export type DeckUnit = {
   product: ProductDoc;
@@ -409,18 +408,31 @@ function Panel({
 
   /**
    * A backdrop document can also carry the palette for the panel in front of
-   * it, so one file defines a product's whole look. Applied as custom
-   * properties on this section only — everything inside already reads its
-   * colours from them, so nothing else has to know this happened.
+   * it, so one file defines a product's whole look. Scoped to this section
+   * only — everything inside already reads its colours from these properties,
+   * so nothing else has to know it happened.
+   *
+   * Emitted as a stylesheet rather than an inline style. Picking the palette
+   * in JavaScript meant asking `useResolvedTheme` during a server render,
+   * where it cannot know and answers "dark" — so every panel shipped with the
+   * dark palette hard-coded inline, outranking both the `.light` class on
+   * <html> and everything in globals.css. On `/products`, where the panel is
+   * the whole page, a visitor in light mode reloaded into a dark page and
+   * stayed there until hydration. Two rules and a media query let the browser
+   * decide while it is still parsing, and there is nothing left to correct.
    */
-  const mode = useResolvedTheme();
   const theme = useMemo(() => extractTheme(product.backdropHtml), [product.backdropHtml]);
-  const vars = theme[mode];
+  // Scoped by the section's own id, which the deep-link anchors already need.
+  const panelId = product.slug || product._id;
+  const themeCss = useMemo(
+    () => panelThemeCss(`[data-panel="${panelId}"]`, theme),
+    [panelId, theme]
+  );
 
   return (
     <section
       id={product.slug || undefined}
-      style={vars as React.CSSProperties}
+      data-panel={panelId}
       // `min-w-full` as well as `w-full`: a flex item resolves its main size
       // through `flex-basis: auto` -> `width`, and a percentage width against
       // a scrolling container is exactly where that resolution gets fragile.
@@ -430,6 +442,8 @@ function Panel({
         active ? "" : "hidden"
       }`}
     >
+      {themeCss ? <style>{themeCss}</style> : null}
+
       <ProductBackdrop html={product.backdropHtml} opacity={product.backdropOpacity} />
 
       {/* Three cells rather than two. Stacked, the reading order is what a

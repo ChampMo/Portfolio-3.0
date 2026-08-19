@@ -107,6 +107,49 @@ const FONT_RE = /^[\w\s,'"-]{1,120}$/;
 export type PanelTheme = Record<string, string>;
 
 /** Pulls the `signal-theme` block out of a backdrop document, if it has one. */
+/**
+ * A backdrop's own palette, as CSS rather than as an inline style.
+ *
+ * The panel used to take `theme[mode]` from `useResolvedTheme` and put it
+ * straight into `style={}`. That hook cannot know the theme during a server
+ * render, so it answers "dark" — and the server therefore stamped the *dark*
+ * palette onto every panel, inline, where it outranks the `.light` class on
+ * <html> and every rule in globals.css. On `/products` the panel is the whole
+ * page, so a visitor in light mode reloaded into a fully dark one and stayed
+ * there until hydration caught up. It was not a flash of the wrong theme; the
+ * markup genuinely said dark.
+ *
+ * Emitting both palettes and letting the browser choose removes the guess
+ * entirely: the right one applies while the HTML is still being parsed, with
+ * no JavaScript involved and nothing to correct afterwards.
+ *
+ * The four rules mirror globals.css exactly — dark as the base, light under a
+ * light OS preference unless `.dark` is set, then each explicit class — so the
+ * two can never disagree about which state means what.
+ */
+export function panelThemeCss(
+  selector: string,
+  theme: { light: PanelTheme; dark: PanelTheme }
+): string {
+  const decls = (t: PanelTheme) =>
+    Object.entries(t)
+      .map(([k, v]) => `${k}:${v};`)
+      .join("");
+
+  const light = decls(theme.light);
+  const dark = decls(theme.dark);
+  if (!light && !dark) return "";
+
+  const out: string[] = [];
+  if (dark) out.push(`${selector}{${dark}}`);
+  if (light) {
+    out.push(`@media (prefers-color-scheme: light){:root:not(.dark) ${selector}{${light}}}`);
+    out.push(`:root.light ${selector}{${light}}`);
+  }
+  if (dark) out.push(`:root.dark ${selector}{${dark}}`);
+  return out.join("");
+}
+
 export function extractTheme(html: string): { light: PanelTheme; dark: PanelTheme } {
   const empty = { light: {}, dark: {} };
   if (!html.includes("signal-theme")) return empty;

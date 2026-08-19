@@ -1,0 +1,119 @@
+<style>
+  /* Transparent: the panel behind supplies the ground colour. */
+  html, body { background: transparent; }
+
+  .field {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  path {
+    fill: none;
+    stroke: color-mix(in srgb, var(--grid) 90%, transparent);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* One line in the accent, so the stack has a horizon rather than reading as
+     an even texture. */
+  path.accent {
+    stroke: color-mix(in srgb, var(--signal) 45%, transparent);
+  }
+</style>
+
+<div class="field">
+  <!-- A fixed viewBox with preserveAspectRatio="none": the lines are stretched
+       to whatever shape the panel is, which is what a contour map does anyway,
+       and it means the geometry below never has to know the pixel size. -->
+  <svg viewBox="0 0 100 100" preserveAspectRatio="none" id="svg"></svg>
+</div>
+
+<script>
+  (function () {
+    var svg = document.getElementById("svg");
+    var LINES = 9;
+    var POINTS = 56;
+    var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    var paths = [];
+    for (var i = 0; i < LINES; i++) {
+      var p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      // The accent sits a third of the way down rather than in the middle,
+      // where it would look like a deliberate divider.
+      if (i === 3) p.setAttribute("class", "accent");
+      svg.appendChild(p);
+      paths.push(p);
+    }
+
+    /* The pointer arrives from the parent page. This frame never receives
+       mouse events of its own, so the coordinates are posted in. */
+    var tx = 0.5, ty = 0.5, mx = 0.5, my = 0.5;
+
+    addEventListener("message", function (e) {
+      var p = e.data && e.data.signalPointer;
+      if (!p) return;
+      tx = p.x;
+      ty = p.y;
+    });
+
+    /**
+     * Draws every line for a given phase.
+     *
+     * Each line is a slow sine of its own, plus a bulge that pushes it away
+     * from the pointer. The bulge falls off with distance, so the effect is
+     * local — the surface deforms under the cursor rather than the whole stack
+     * tilting, which is what makes it read as terrain seen through a lens.
+     */
+    function draw(phase) {
+      for (var i = 0; i < LINES; i++) {
+        var base = ((i + 0.5) / LINES) * 100;
+        var d = "";
+
+        for (var j = 0; j <= POINTS; j++) {
+          var x = (j / POINTS) * 100;
+
+          // Two waves of different periods, so the ridges never repeat neatly.
+          var y =
+            base +
+            Math.sin(x * 0.075 + phase + i * 0.55) * 3.4 +
+            Math.sin(x * 0.031 - phase * 0.6 + i * 0.9) * 2.1;
+
+          // Distance from the pointer, in the same 0..100 space.
+          var dx = x - mx * 100;
+          var dy = base - my * 100;
+          var falloff = Math.exp(-(dx * dx + dy * dy) / 900);
+          y += falloff * (base - my * 100 > 0 ? 9 : -9);
+
+          d += (j === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2);
+        }
+
+        paths[i].setAttribute("d", d);
+      }
+    }
+
+    if (reduce) {
+      draw(0);
+      return;
+    }
+
+    var t = 0;
+    function frame() {
+      // Eased follow: the terrain settles towards the pointer instead of
+      // snapping, which at this scale is the difference between a landscape
+      // and a jitter.
+      mx += (tx - mx) * 0.045;
+      my += (ty - my) * 0.045;
+
+      // Very slow — a full cycle takes the better part of a minute, so the
+      // motion is noticed only if the panel is looked at for a while.
+      t += 0.0022;
+      draw(t);
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  })();
+</script>

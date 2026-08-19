@@ -82,6 +82,7 @@ export default function ArchiveDeck({
 
   const gridRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const deckRef = useRef<HTMLDivElement | null>(null);
   const countRef = useRef<HTMLSpanElement | null>(null);
   const scrollRef = useRef<HTMLSpanElement | null>(null);
   const shownCount = useRef(-1);
@@ -246,15 +247,53 @@ export default function ArchiveDeck({
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
-    const io = new IntersectionObserver(([entry]) => {
-      const off = !entry.isIntersecting;
-      setStuck(off);
-      // Returning to the top hands control back to the automatic behaviour,
-      // so a filter panel opened earlier does not stay pinned open forever.
-      if (!off) setPinned(false);
-    });
+    // Fire the moment the deck actually sticks, which is when the sentinel
+    // reaches the underside of the header rather than the top of the viewport.
+    const headHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        const off = !entry.isIntersecting;
+        setStuck(off);
+        // Returning to the top hands control back to the automatic behaviour,
+        // so a filter panel opened earlier does not stay pinned open forever.
+        if (!off) setPinned(false);
+      },
+      { rootMargin: `-${Math.round(headHeight)}px 0px 0px 0px` }
+    );
     io.observe(sentinel);
     return () => io.disconnect();
+  }, []);
+
+  /**
+   * Parks the deck exactly under the page header, whatever height it is.
+   *
+   * This offset was written as a literal `top-[57px]`. The header is padding
+   * plus a 32px control plus its border — 73px — and the literal never grew
+   * with it, so the deck came to rest sixteen pixels *behind* the header:
+   * its own top row of chips was tucked out of sight, and it covered more of
+   * the results than its visible height suggested. Measuring means the two
+   * cannot drift apart again, including if the header ever wraps on a narrow
+   * window. Written straight to the node, so no scroll or resize re-renders
+   * the results underneath.
+   */
+  useEffect(() => {
+    const deck = deckRef.current;
+    const header = document.querySelector("header");
+    if (!deck || !header) return;
+
+    const apply = () => {
+      const h = Math.round(header.getBoundingClientRect().height);
+      // A zero measurement means the header has no layout yet — a hidden tab,
+      // a print pass. Writing it would park the deck at the very top, right
+      // over the header, which is worse than the stylesheet's fallback.
+      if (h > 0) deck.style.top = `${h}px`;
+    };
+    apply();
+
+    const ro = new ResizeObserver(apply);
+    ro.observe(header);
+    return () => ro.disconnect();
   }, []);
 
   const collapsed = stuck && !pinned;
@@ -267,7 +306,12 @@ export default function ArchiveDeck({
       {/* Watched by the observer above; the deck is stuck once this leaves. */}
       <div ref={sentinelRef} aria-hidden="true" className="h-px" />
 
-      <div className="sticky top-[57px] z-40 border-b border-grid bg-ground/90 backdrop-blur-[10px]">
+      <div
+        ref={deckRef}
+        // `top` is set from the header's measured height on mount; this is the
+        // pre-hydration fallback, close enough that nothing jumps visibly.
+        className="sticky top-[73px] z-40 border-b border-grid bg-ground/90 backdrop-blur-[10px]"
+      >
         <div
           className={`mx-auto flex max-w-[1240px] flex-col px-[var(--pad-x)] transition-[padding,gap] duration-300 ${
             collapsed ? "gap-0 py-3" : "gap-3 py-5"

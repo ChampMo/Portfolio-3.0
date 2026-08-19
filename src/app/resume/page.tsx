@@ -55,23 +55,31 @@ export default async function ResumePage() {
   return (
     <div className="resume min-h-svh bg-ground">
       <div className="no-print sticky top-0 z-50 border-b border-grid bg-ground/90 backdrop-blur-[10px]">
-        <div className="mx-auto flex max-w-[860px] items-center justify-between gap-4 px-6 py-4">
+        {/* Four controls in 327px. Each was being squeezed to its narrowest
+            possible box, which made every label wrap inside its own pill —
+            the row was legible only as a stack of blobs. They keep their
+            labels whole and drop words instead. */}
+        <div className="mx-auto flex max-w-[860px] items-center justify-between gap-2 px-6 py-4 sm:gap-4">
           <Link
             href="/"
             data-cursor="HOME"
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:text-signal"
+            // Padded to a thumb-sized target without moving anything: bare
+            // text in a flex row is only as tall as its line box, 17px here.
+            className="-my-2 shrink-0 whitespace-nowrap py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-muted transition-colors hover:text-signal"
           >
-            &larr; Back to deck
+            &larr; <span className="sm:hidden">Deck</span>
+            <span className="hidden sm:inline">Back to deck</span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             {identity?.media.cvVisible && identity.media.cvUrl ? (
               <a
                 href={safeUrl(identity.media.cvUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-grid px-4 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted transition-colors hover:border-signal hover:text-signal"
+                className="shrink-0 whitespace-nowrap rounded-full border border-grid px-3 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted transition-colors hover:border-signal hover:text-signal sm:px-4"
               >
-                Original CV
+                <span className="sm:hidden">CV</span>
+                <span className="hidden sm:inline">Original CV</span>
               </a>
             ) : null}
             <PrintButton />
@@ -301,7 +309,12 @@ function Stack({ items, link }: { items: string[]; link?: string }) {
       {link ? (
         <>
           {items.length > 0 ? " · " : ""}
-          <a href={safeHref(link)} className="normal-case text-telemetry hover:text-signal">
+          <a
+            href={safeHref(link)}
+            // Same negative-margin padding as the contact row: a real hit
+            // area on a phone, no change to the printed line height.
+            className="-my-2 inline-block py-2 normal-case text-telemetry hover:text-signal"
+          >
             {link.replace(/^https?:\/\//, "")}
           </a>
         </>

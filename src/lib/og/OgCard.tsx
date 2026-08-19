@@ -3,6 +3,48 @@ import type { ReactElement } from "react";
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
 
+/**
+ * Fetches a portrait and inlines it as a data URI.
+ *
+ * Satori can load a remote image itself, but then the card's whole render
+ * depends on that fetch succeeding — a moved file or a slow host would not
+ * degrade the picture, it would fail the route, and the link would go back to
+ * having no card at all. Pulling the bytes here means a portrait that cannot
+ * be had is simply absent, which the layout already handles.
+ *
+ * Cloudinary is asked for a modest square PNG rather than the full upload:
+ * Satori reads PNG and JPEG only, and `f_auto` would happily hand it the WebP
+ * it cannot decode.
+ */
+export async function inlinePortrait(url: string): Promise<string | undefined> {
+  const src = typeof url === "string" ? url.trim() : "";
+  if (!src) return undefined;
+
+  const sized = src.includes("res.cloudinary.com/")
+    ? src.replace("/image/upload/", "/image/upload/f_png,c_fill,g_auto,w_400,h_400/")
+    : src;
+
+  try {
+    const res = await fetch(sized, {
+      signal: AbortSignal.timeout(3000),
+      cache: "no-store",
+    });
+    if (!res.ok) return undefined;
+
+    const type = res.headers.get("content-type") ?? "";
+    if (!/^image\/(png|jpeg)$/.test(type)) return undefined;
+
+    const bytes = Buffer.from(await res.arrayBuffer());
+    // A card that has to carry megabytes of portrait is worse than one
+    // without; chat clients time out on slow cards.
+    if (bytes.length > 2_000_000) return undefined;
+
+    return `data:${type};base64,${bytes.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
+
 /* The SIGNAL palette, dark variant. Social cards are pasted onto feeds of
    every colour, and the dark card holds its own against both. */
 const GROUND = "#12110D";
@@ -31,6 +73,7 @@ export function OgCard({
   chips = [],
   status,
   footer,
+  portrait,
 }: {
   eyebrow: string;
   title: string;
@@ -38,6 +81,8 @@ export function OgCard({
   chips?: string[];
   status?: string;
   footer: string;
+  /** Data URI from `inlinePortrait`; omitted when there is none to show. */
+  portrait?: string;
 }): ReactElement {
   return (
     <div
@@ -93,7 +138,14 @@ export function OgCard({
         }}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center" }}>
           <div
             style={{
@@ -145,11 +197,29 @@ export function OgCard({
               fontSize: 30,
               lineHeight: 1.45,
               color: MUTED,
-              maxWidth: 880,
             }}
           >
             {summary}
           </div>
+        ) : null}
+        </div>
+
+        {portrait ? (
+          /* Satori renders this, not a browser — `next/image` has no meaning
+             in an ImageResponse, and the data URI is already sized. */
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={portrait}
+            width={196}
+            height={196}
+            alt=""
+            style={{
+              marginLeft: 48,
+              borderRadius: 28,
+              border: `2px solid ${GRID}`,
+              objectFit: "cover",
+            }}
+          />
         ) : null}
       </div>
 

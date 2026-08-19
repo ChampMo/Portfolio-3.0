@@ -97,7 +97,15 @@ export default async function ResumePage() {
             {socials.map(([k, v]) => (
               <span key={k} className="flex items-center gap-2.5">
                 <Dot />
-                <a href={v} className="capitalize text-telemetry hover:text-signal">
+                {/* Padded rather than enlarged: at 18px tall these were well
+                    under the ~44px a thumb needs, but the résumé is a dense
+                    typographic block and growing the text would break its
+                    rhythm — and the print stylesheet renders it at paper
+                    sizes where the padding is irrelevant. */}
+                <a
+                  href={v}
+                  className="-my-2 py-2 capitalize text-telemetry hover:text-signal"
+                >
                   {k}
                 </a>
               </span>

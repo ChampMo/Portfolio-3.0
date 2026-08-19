@@ -111,6 +111,8 @@ function assetsFor(unit: DeckUnit): ReleaseAsset[] {
 export default function ProductDeck({ units }: { units: DeckUnit[] }) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const [index, setIndex] = useState(0);
+  /** Phone only: the unit list, which replaces the side-scrolling deck. */
+  const [picking, setPicking] = useState(false);
   /** Mirrors `index` for the scroll handlers, which must not close over state. */
   const indexRef = useRef(0);
 
@@ -242,13 +244,28 @@ export default function ProductDeck({ units }: { units: DeckUnit[] }) {
     };
   }, [slugKey]);
 
+  /**
+   * Shows unit `i`.
+   *
+   * On a wide screen that means travelling the deck sideways to it. On a phone
+   * there is no deck to travel: every unit was stacked into one very long
+   * page, so reaching the third product meant scrolling past the whole of the
+   * first two — screenshots, download panels and all. Only the chosen unit is
+   * rendered there, and this swaps which one that is.
+   */
   function jump(i: number) {
     const track = trackRef.current;
     if (!track) return;
+
     if (window.matchMedia("(min-width: 768px)").matches) {
       travelTo(track, i * track.clientWidth);
     } else {
-      track.children[i]?.scrollIntoView({ behavior: "smooth" });
+      indexRef.current = i;
+      setIndex(i);
+      setPicking(false);
+      // The new unit starts at its own top rather than at the scroll depth
+      // the previous one happened to be left at.
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
     writeHash(units[i]?.product.slug);
   }
@@ -268,8 +285,62 @@ export default function ProductDeck({ units }: { units: DeckUnit[] }) {
     );
   }
 
+  const currentName = units[Math.min(index, units.length - 1)]?.product.name ?? "";
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* Phone unit picker. The deck's sideways travel needs a pointer and a
+          wide viewport, and neither exists here — the rail that lists the
+          units is desktop-only, so on a phone there was no way to see what
+          else the bay held short of scrolling through all of it. */}
+      {units.length > 1 ? (
+        <div className="relative shrink-0 border-b border-grid md:hidden">
+          <button
+            type="button"
+            onClick={() => setPicking((v) => !v)}
+            aria-expanded={picking}
+            className="flex w-full items-center justify-between gap-3 px-[var(--pad-x)] py-3 text-left"
+          >
+            <span className="min-w-0 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-ink">
+              <span className="text-signal">
+                {String(index + 1).padStart(2, "0")}
+              </span>{" "}
+              {currentName}
+            </span>
+            <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
+              {units.length} units
+              <ChevronDown
+                size={13}
+                aria-hidden="true"
+                className={`transition-transform duration-200 ${picking ? "rotate-180" : ""}`}
+              />
+            </span>
+          </button>
+
+          {picking ? (
+            <ul className="absolute inset-x-0 top-full z-30 m-0 list-none border-b border-grid bg-ground/95 p-0 backdrop-blur-[10px]">
+              {units.map((u, i) => (
+                <li key={u.product._id}>
+                  <button
+                    type="button"
+                    onClick={() => jump(i)}
+                    aria-current={i === index}
+                    className={`flex w-full items-center gap-3 px-[var(--pad-x)] py-3 text-left font-mono text-[11px] uppercase tracking-[0.12em] transition-colors ${
+                      i === index ? "text-signal" : "text-ink-muted"
+                    }`}
+                  >
+                    <span className="tabular-nums opacity-60">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{u.product.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
+
       <div
         ref={trackRef}
         // `overflow-y-hidden` is not decoration. Setting `overflow-x` to
@@ -281,7 +352,13 @@ export default function ProductDeck({ units }: { units: DeckUnit[] }) {
         className="deck-track flex-1 md:flex md:snap-x md:snap-mandatory md:overflow-x-auto md:overflow-y-hidden"
       >
         {units.map((unit, i) => (
-          <Panel key={unit.product._id} unit={unit} n={i + 1} total={units.length} />
+          <Panel
+            key={unit.product._id}
+            unit={unit}
+            n={i + 1}
+            total={units.length}
+            active={i === index}
+          />
         ))}
       </div>
 
@@ -313,7 +390,18 @@ export default function ProductDeck({ units }: { units: DeckUnit[] }) {
   );
 }
 
-function Panel({ unit, n, total }: { unit: DeckUnit; n: number; total: number }) {
+function Panel({
+  unit,
+  n,
+  total,
+  active,
+}: {
+  unit: DeckUnit;
+  n: number;
+  total: number;
+  /** Phone only: the deck renders one unit at a time there. */
+  active: boolean;
+}) {
   const { product, release, projectSlug } = unit;
   const assets = assetsFor(unit);
   const version = release?.version || product.version;
@@ -338,13 +426,21 @@ function Panel({ unit, n, total }: { unit: DeckUnit; n: number; total: number })
       // a scrolling container is exactly where that resolution gets fragile.
       // A minimum cannot be negotiated away, so the track always overflows by
       // one viewport per extra unit — which is the whole travel.
-      className="relative w-full shrink-0 overflow-hidden bg-ground md:min-w-full md:snap-start md:overflow-y-auto"
+      className={`relative w-full shrink-0 overflow-hidden bg-ground md:min-w-full md:snap-start md:overflow-y-auto md:block ${
+        active ? "" : "hidden"
+      }`}
     >
       <ProductBackdrop html={product.backdropHtml} opacity={product.backdropOpacity} />
 
-      <div className="relative z-[1] mx-auto grid max-w-[1240px] grid-cols-1 items-center gap-x-14 gap-y-10 px-[var(--pad-x)] py-14 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)]">
-        {/* ── pitch ── */}
-        <div className="min-w-0">
+      {/* Three cells rather than two. Stacked, the reading order is what a
+          phone wants — name, what it is, then what it looks like, then how to
+          get it — but on a wide screen the screen belongs beside the pitch,
+          not under half of it. Explicit placement at `lg` puts the two halves
+          of the pitch back into one column and spans the screen down both
+          rows, which is the layout that was there before. */}
+      <div className="relative z-[1] mx-auto grid max-w-[1240px] grid-cols-1 items-start gap-x-14 gap-y-8 px-[var(--pad-x)] py-14 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)] lg:items-center lg:gap-y-10">
+        {/* ── pitch: identity and description ── */}
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
           <p className="mb-5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
             <span>
               Unit <span className="text-signal">{String(n).padStart(2, "0")}</span> /{" "}
@@ -380,11 +476,19 @@ function Panel({ unit, n, total }: { unit: DeckUnit; n: number; total: number })
           ) : null}
 
           {product.description ? (
-            <p className="mb-7 max-w-[52ch] whitespace-pre-line text-[15px] leading-[1.75] text-ink-muted">
+            <p className="max-w-[52ch] whitespace-pre-line text-[15px] leading-[1.75] text-ink-muted">
               {product.description}
             </p>
           ) : null}
+        </div>
 
+        {/* ── the screen ── */}
+        <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+          <DeviceFrame product={product} />
+        </div>
+
+        {/* ── pitch: how to get it ── */}
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
           <div className="mb-7 flex flex-wrap gap-2">
             {product.platforms.map((p) => (
               <span
@@ -436,9 +540,6 @@ function Panel({ unit, n, total }: { unit: DeckUnit; n: number; total: number })
             ) : null}
           </div>
         </div>
-
-        {/* ── device ── */}
-        <DeviceFrame product={product} />
       </div>
     </section>
   );

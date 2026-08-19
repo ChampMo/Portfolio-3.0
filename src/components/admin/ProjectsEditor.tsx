@@ -48,17 +48,13 @@ export default function ProjectsEditor({ initial }: { initial: ProjectDoc[] }) {
         onReorder={c.reorder}
         label={(p) => p.name}
         emptyHint="No projects yet. Add one — the Mission Archives rail is hidden on the public site while this is empty."
+        // The view count used to sit here beside the star. It only rendered
+        // when a project had views, so the stars stopped lining up down the
+        // column and the pill crowded whichever titles happened to be long —
+        // a number nobody scans the list *for* was pushing around the two
+        // things they do. It lives in the editor now, with the rest of what
+        // is true about one project.
         rowAction={(p) => (
-          <span className="flex items-center gap-1.5">
-            {p.views > 0 ? (
-              <span
-                title={`${p.views} view${p.views === 1 ? "" : "s"}`}
-                className="inline-flex items-center gap-1 rounded-lg border border-grid bg-panel px-2 py-1.5 font-mono text-[10px] tabular-nums text-ink-muted"
-              >
-                <Eye size={11} aria-hidden="true" className="opacity-60" />
-                {p.views}
-              </span>
-            ) : null}
           <button
             type="button"
             aria-pressed={p.featured}
@@ -84,7 +80,6 @@ export default function ProjectsEditor({ initial }: { initial: ProjectDoc[] }) {
           >
             <Star size={14} aria-hidden="true" fill={p.featured ? "currentColor" : "none"} />
           </button>
-          </span>
         )}
       >
         {c.current ? (
@@ -130,6 +125,22 @@ export default function ProjectsEditor({ initial }: { initial: ProjectDoc[] }) {
                 onChange={(v) => c.patch(c.current!._id, { slug: v })}
                 hint="Leave blank to generate from the name"
               />
+
+              {/* Read-only, and sat next to the slug on purpose: the slug is
+                  the address the counter counts. */}
+              <div className="flex flex-col gap-1.5">
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-ink-muted">
+                  Views
+                </span>
+                <p className="flex items-center gap-2 font-mono text-[13px] tabular-nums text-ink">
+                  <Eye size={13} aria-hidden="true" className="text-ink-muted/60" />
+                  {(c.current.views ?? 0).toLocaleString()}
+                  <span className="font-sans text-[11px] tabular-nums text-ink-muted">
+                    {c.current.views === 1 ? "visit" : "visits"} to this
+                    project&rsquo;s own page
+                  </span>
+                </p>
+              </div>
             </Panel>
 
             <Panel title="Copy">

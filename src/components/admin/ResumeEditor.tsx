@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Plus, Printer, Trash2, Eye, EyeOff, GripVertical, ChevronDown } from "lucide-react";
 import type { ResumeDoc, ResumeEntry } from "@/models/Resume";
@@ -17,6 +17,31 @@ import ResumeSheet from "./ResumeSheet";
 
 /** Roughly what one line of a bullet holds at the printed size. */
 const LINE_BUDGET = 105;
+
+/**
+ * False on the server and through hydration, true from the next render on.
+ *
+ * The print copy is portalled into `document.body`, and a portal rendered on
+ * the very first client pass puts a node there that the server never sent.
+ * React reports a hydration mismatch (#418) and recovers by regenerating the
+ * tree from the root — and that regeneration reapplies the root element's
+ * attributes, wiping the theme class the pre-paint script had just written.
+ * It is why this page alone came back from a reload in the wrong theme while
+ * every other page merely flashed.
+ *
+ * Waiting one render costs nothing: the copy is invisible until printing. The
+ * shape is the same `useSyncExternalStore` the palette hint uses to ask a
+ * browser-only question without upsetting hydration.
+ */
+const subscribeNever = () => () => {};
+
+function useMounted() {
+  return useSyncExternalStore(
+    subscribeNever,
+    () => true,
+    () => false
+  );
+}
 
 const SECTION_LABEL: Record<string, string> = {
   education: "Education",
@@ -510,6 +535,7 @@ function Preview({
 }) {
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const [fill, setFill] = useState(0);
+  const mounted = useMounted();
 
   /**
    * Measures the content against one page.
@@ -596,7 +622,7 @@ function Preview({
           invisible — hidden-but-laid-out siblings were what padded a one-page
           CV out to two. Same component, same props, so it cannot drift from
           the preview above. */}
-      {typeof document !== "undefined"
+      {mounted
         ? createPortal(
             <div className="cv-print" aria-hidden="true">
               <div className="cv-sheet">

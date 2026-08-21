@@ -453,3 +453,25 @@ body {
     break-inside: avoid;
   }
 }
+
+/* ---------- admin: loading placeholders ----------
+   A block that reads as "something is coming" without pretending to be the
+   thing itself. Built from the palette rather than a fixed grey so it belongs
+   in either theme, and pulsing gently rather than sweeping — a shimmer that
+   crosses the whole page every second is more distracting than the wait it is
+   covering. */
+.skeleton {
+  display: block;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--grid) 60%, transparent);
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+}

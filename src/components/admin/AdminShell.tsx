@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/experience", label: "Mission Log", code: "05" },
   { href: "/admin/products", label: "Deployment Bay", code: "06" },
   { href: "/admin/messages", label: "Inbox", code: "07" },
+  { href: "/admin/resume", label: "Résumé PDF", code: "08" },
 ];
 
 export default function AdminShell({

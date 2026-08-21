@@ -68,3 +68,21 @@ export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 export const DEVICE_TYPES = ["DESKTOP", "PHONE"] as const;
 
 export type DeviceType = (typeof DEVICE_TYPES)[number];
+
+/**
+ * Sections a CV sheet can carry, in the order the editor offers them.
+ *
+ * `education` and `skills` are read straight from the live site data — there
+ * is nothing in them worth rewording. `experience` and `projects` are written
+ * on the sheet itself, because fitting a page is a rewording job and the
+ * wording that suits a CV is not the wording that suits a case study.
+ */
+export const RESUME_SECTIONS = [
+  "education",
+  "experience",
+  "projects",
+  "skills",
+  "services",
+] as const;
+
+export type ResumeSection = (typeof RESUME_SECTIONS)[number];

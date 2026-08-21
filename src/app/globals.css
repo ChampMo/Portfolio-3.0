@@ -265,3 +265,191 @@ body {
     scrollbar-width: thin;
   }
 }
+
+/* ---------- admin: the résumé sheet rides along ----------
+   Giving both columns their own scroller left three bars on screen — the
+   page's, the editor's and the preview's — and no way to tell which one a
+   wheel gesture was about to move. The editor keeps the page's scrollbar, the
+   one already there, and the sheet is simply pinned so it stays in view while
+   the entries scroll past it.
+
+   The height cap and overflow are a backstop rather than a feature: on a short
+   window the gauge, sheet and print button together can outgrow the viewport,
+   and a pinned element taller than the screen hides its own bottom for good.
+   On any normal window nothing overflows and no second bar appears. */
+@media (min-width: 1280px) {
+  .cv-sticky {
+    position: sticky;
+    top: calc(var(--admin-head-h) + 1rem);
+    align-self: start;
+    max-height: calc(100svh - var(--admin-head-h) - 6rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+/* ---------- CV sheet ----------
+   One stylesheet for the preview and the print, so the preview can be trusted
+   to answer "does this fit on one page". A separate print template would
+   answer a different question every time one of them was edited.
+
+   A4 minus 14mm margins. The height is fixed rather than minimum: the fill
+   gauge divides the content's height by this box, and a box that grew with its
+   contents would always report exactly full. */
+.cv-frame {
+  container-type: inline-size;
+  width: 100%;
+}
+
+.cv-sheet {
+  width: 182mm;
+  height: 269mm;
+  padding: 0;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-family: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 9.6pt;
+  line-height: 1.42;
+  overflow: hidden;
+  /* Scaled to whatever column it is given, so the preview keeps true A4
+     proportions instead of reflowing into a different layout than the print. */
+  transform: scale(var(--cv-scale, 1));
+  transform-origin: top left;
+}
+
+/* Shrink to fit the admin column. `cqw` is the container width, and 182mm is
+   about 688px, so this is simply "how much of a page fits here". */
+@container (max-width: 700px) {
+  .cv-sheet { --cv-scale: calc(100cqw / 688); }
+  .cv-frame { height: calc(269mm * (100cqw / 688)); }
+}
+
+.cv-body { display: block; }
+
+.cv-name {
+  margin: 0;
+  font-size: 20pt;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.cv-role {
+  margin: 1mm 0 0;
+  font-size: 10pt;
+  color: #333333;
+}
+.cv-contact {
+  margin: 1.4mm 0 0;
+  font-size: 8.6pt;
+  color: #444444;
+}
+
+.cv-section { margin-top: 4.5mm; }
+
+.cv-h2 {
+  margin: 0 0 1.6mm;
+  padding-bottom: 0.8mm;
+  border-bottom: 0.4mm solid #1a1a1a;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.cv-entry { margin-top: 2.4mm; }
+.cv-entry:first-of-type { margin-top: 0; }
+
+/* Title and date on one line, date pinned right — the shape every CV reader
+   scans for. */
+.cv-entry-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6mm;
+}
+.cv-entry-title { margin: 0; font-size: 9.6pt; }
+.cv-entry-sub { font-weight: 400; }
+.cv-entry-time {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 9pt;
+  color: #333333;
+  white-space: nowrap;
+}
+
+.cv-bullets {
+  margin: 0.8mm 0 0;
+  padding-left: 4.4mm;
+  list-style: none;
+}
+.cv-bullets li { position: relative; margin-top: 0.5mm; }
+.cv-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: -3.6mm;
+}
+
+.cv-skill-row { margin: 0.9mm 0 0; }
+.cv-empty { margin: 0; font-size: 9pt; color: #777777; font-style: italic; }
+
+/* ---------- printing the sheet ----------
+
+   `visibility: hidden` was the wrong tool. It stops an element being painted
+   but leaves it occupying exactly as much space as before, so the whole admin
+   page — sidebar, panels, save bar — was still laid out underneath the sheet
+   and still counted toward the page total. Chrome dutifully reported two
+   pages for a CV that fitted on one, and the second came out blank.
+
+   The sheet is rendered a second time as a direct child of <body> instead
+   (`.cv-print`, portalled there by the editor), so print can take everything
+   else out of the flow entirely. Both copies are the same component with the
+   same props, so what is measured on screen is still what comes out.
+
+   `@page { margin: 0 }` is what removes the browser's own header and footer —
+   the date, the page title, the localhost URL and the page number. Those are
+   drawn in the page margin box, and with no margin there is nowhere to draw
+   them. The margin moves onto the sheet as padding instead, so the printed
+   text sits where it always did. */
+@media screen {
+  .cv-print { display: none; }
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* Everything the admin renders is a sibling of the print copy. */
+  body > *:not(.cv-print) {
+    display: none !important;
+  }
+
+  .cv-print {
+    display: block !important;
+  }
+
+  .cv-print .cv-sheet {
+    --cv-scale: 1;
+    /* The margin `@page` gave up, restored where it does not invite a header. */
+    box-sizing: border-box;
+    width: 210mm;
+    height: auto;
+    min-height: 297mm;
+    padding: 14mm;
+    overflow: visible;
+    box-shadow: none;
+  }
+
+  /* An entry split across the fold reads as two half-entries. */
+  .cv-entry,
+  .cv-section {
+    break-inside: avoid;
+  }
+}

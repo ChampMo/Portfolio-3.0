@@ -4,6 +4,8 @@ import type { ServiceDoc } from "@/models/Service";
 import type { ProjectDoc } from "@/models/Project";
 import type { ProductDoc, ProductDownload } from "@/models/Product";
 import type { ExperienceDoc } from "@/models/Experience";
+import type { ResumeDoc, ResumeEntry } from "@/models/Resume";
+import { RESUME_SECTIONS } from "@/lib/content/constants";
 
 /**
  * `.lean()` returns exactly what is stored in MongoDB — Mongoose only applies
@@ -202,5 +204,52 @@ export function normalizeIdentity(raw: Partial<IdentityDoc> | null): IdentityDoc
       experience: section("experience", "Mission Log"),
       contact: section("contact", "Channel Open"),
     },
+  };
+}
+
+/**
+ * A CV sheet, with every field guaranteed present.
+ *
+ * `sections` is filled in from the canonical list rather than trusted from the
+ * document: a sheet saved before a section existed would otherwise be missing
+ * it entirely, and the editor would have no row to toggle. Order comes from
+ * the stored row where there is one, and from the canonical order otherwise.
+ */
+export function normalizeResume(raw: Partial<ResumeDoc> & { _id?: unknown }): ResumeDoc {
+  const stored = new Map(
+    (Array.isArray(raw?.sections) ? raw.sections : []).map((s) => [s?.key, s])
+  );
+
+  const entries = (v: unknown): ResumeEntry[] =>
+    (Array.isArray(v) ? v : []).map((raw) => {
+      const e = (raw ?? {}) as Partial<ResumeEntry>;
+      return {
+        sourceId: text(e.sourceId),
+        title: text(e.title),
+        subtitle: text(e.subtitle),
+        time: text(e.time),
+        bullets: arr(e.bullets),
+        enabled: e.enabled !== false,
+      };
+    });
+
+  return {
+    _id: String(raw?._id ?? ""),
+    name: text(raw?.name),
+    headline: text(raw?.headline),
+    website: text(raw?.website),
+    sections: RESUME_SECTIONS.map((key, i) => {
+      const hit = stored.get(key);
+      return {
+        key,
+        // Services is the one section a CV does not usually carry, so a sheet
+        // that has never been told either way leaves it out.
+        enabled: hit ? hit.enabled !== false : key !== "services",
+        order: hit && typeof hit.order === "number" ? hit.order : i,
+      };
+    }).sort((a, b) => a.order - b.order),
+    experience: entries(raw?.experience),
+    projects: entries(raw?.projects),
+    order: number(raw?.order, 0),
   };
 }

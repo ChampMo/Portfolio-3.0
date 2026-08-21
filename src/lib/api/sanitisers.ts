@@ -3,6 +3,7 @@ import {
   EXPERIENCE_TYPES,
   PROJECT_STATUSES,
   PROJECT_BLOCK_TYPES,
+  RESUME_SECTIONS,
 } from "@/lib/content/constants";
 import { safeUrl } from "@/lib/content/url";
 import {
@@ -238,5 +239,53 @@ export function sanitiseProduct(b: Record<string, unknown>) {
     featured: has(b, "featured") ? bool(b.featured) : undefined,
     order: has(b, "order") ? num(b.order) : undefined,
     published: has(b, "published") ? bool(b.published, true) : undefined,
+  });
+}
+
+/**
+ * One experience or project entry on a CV sheet.
+ *
+ * Bullets are capped rather than merely cleaned: the whole point of these
+ * sheets is fitting one page, and an entry with fifteen lines has already
+ * failed at that. The cap keeps a paste-gone-wrong from silently producing a
+ * three-page PDF.
+ */
+function cvEntry(raw: unknown): Record<string, unknown> {
+  const b = (raw ?? {}) as Record<string, unknown>;
+  return {
+    sourceId: /^[a-f0-9]{24}$/i.test(str(b.sourceId)) ? str(b.sourceId) : "",
+    title: str(b.title),
+    subtitle: str(b.subtitle),
+    time: str(b.time),
+    bullets: cleanList(b.bullets).slice(0, 10),
+    enabled: bool(b.enabled, true),
+  };
+}
+
+const cvEntries = (v: unknown) =>
+  (Array.isArray(v) ? v : []).slice(0, 20).map(cvEntry);
+
+export function sanitiseResume(b: Record<string, unknown>) {
+  return compact({
+    name: has(b, "name") ? str(b.name) : undefined,
+    headline: has(b, "headline") ? str(b.headline) : undefined,
+    // `safeUrl` also fills in https:// for a bare host typed by hand.
+    website: has(b, "website") ? safeUrl(b.website) : undefined,
+    sections: has(b, "sections")
+      ? (Array.isArray(b.sections) ? b.sections : [])
+          .map((raw) => {
+            const s = (raw ?? {}) as Record<string, unknown>;
+            return {
+              key: str(s.key),
+              enabled: bool(s.enabled, true),
+              order: num(s.order),
+            };
+          })
+          // An unknown key would fail the schema enum and reject the whole save.
+          .filter((s) => (RESUME_SECTIONS as readonly string[]).includes(s.key))
+      : undefined,
+    experience: has(b, "experience") ? cvEntries(b.experience) : undefined,
+    projects: has(b, "projects") ? cvEntries(b.projects) : undefined,
+    order: has(b, "order") ? num(b.order) : undefined,
   });
 }

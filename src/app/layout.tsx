@@ -65,10 +65,26 @@ export default function RootLayout({
       // router can suppress it during route transitions instead of animating
       // the jump to the top of every new page.
       data-scroll-behavior="smooth"
-      className={`${bigShoulders.variable} ${publicSans.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body>
+      {/* The font variables live here rather than on <html>, and that is the
+          whole point of this line.
+
+          The theme is applied by writing `light` or `dark` onto <html> before
+          first paint — a class React knows nothing about. While React also
+          owned <html>'s `className`, any re-render of the root could reapply
+          its own value and take the theme class with it: the admin came back
+          from a reload with a stored preference of "light", an <html> carrying
+          nothing but the three font classes, and a page rendered dark from the
+          OS default. The public pages happened to survive it; the admin, which
+          streams behind an auth check and a database read, did not.
+
+          Everything inherits from <body>, and `body` is where the base
+          font-family is declared, so nothing loses its typeface. But <html> is
+          now nobody's to rewrite except the theme script's. */}
+      <body
+        className={`${bigShoulders.variable} ${publicSans.variable} ${jetbrainsMono.variable}`}
+      >
         <ThemeInit />
         <PreloadInit />
         <RouteTrail />

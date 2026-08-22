@@ -166,11 +166,19 @@ export default async function ProjectPage(props: {
                 className="relative m-0 overflow-hidden rounded-[16px] border border-grid bg-panel"
                 data-reveal
               >
+                {/* No fixed ratio: the frame takes the picture's own.
+                    A cover forced into 4:3 and cropped to fill lost whatever
+                    did not fit, and covers are not one shape — a 1200×630
+                    social card lost a third of its width, taking the first
+                    letters of the name with it. Letting the image set the
+                    height means nothing is ever cut, for any project. The cap
+                    is only for a pathologically tall one, where `contain`
+                    letterboxes rather than crops. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={project.coverImage}
                   alt=""
-                  className="aspect-[4/3] w-full object-cover"
+                  className="block max-h-[68svh] w-full object-contain"
                 />
                 <span aria-hidden="true" className="pointer-events-none absolute left-3 top-3 size-4 border-l border-t border-ink/40" />
                 <span aria-hidden="true" className="pointer-events-none absolute right-3 top-3 size-4 border-r border-t border-ink/40" />

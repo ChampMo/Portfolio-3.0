@@ -344,17 +344,21 @@ body {
   color: #444444;
 }
 
-.cv-section { margin-top: 4.5mm; }
+/* Spacing is where a CV wastes a page, not the type size. These are the
+   tightened values: the sheet was spending 58mm of its 269mm on gaps alone,
+   and a full-stack CV with five roles ran 1% over. Cut to 38mm it fits with
+   room to add a line, and the text is the size it always was. */
+.cv-section { margin-top: 3mm; }
 
 .cv-h2 {
-  margin: 0 0 1.6mm;
-  padding-bottom: 0.8mm;
+  margin: 0 0 1.1mm;
+  padding-bottom: 0.6mm;
   border-bottom: 0.4mm solid #1a1a1a;
   font-size: 11pt;
   font-weight: 700;
 }
 
-.cv-entry { margin-top: 2.4mm; }
+.cv-entry { margin-top: 1.6mm; }
 .cv-entry:first-of-type { margin-top: 0; }
 
 /* Title and date on one line, date pinned right — the shape every CV reader
@@ -376,18 +380,18 @@ body {
 }
 
 .cv-bullets {
-  margin: 0.8mm 0 0;
+  margin: 0.5mm 0 0;
   padding-left: 4.4mm;
   list-style: none;
 }
-.cv-bullets li { position: relative; margin-top: 0.5mm; }
+.cv-bullets li { position: relative; margin-top: 0.3mm; }
 .cv-bullets li::before {
   content: "•";
   position: absolute;
   left: -3.6mm;
 }
 
-.cv-skill-row { margin: 0.9mm 0 0; }
+.cv-skill-row { margin: 0.6mm 0 0; }
 .cv-empty { margin: 0; font-size: 9pt; color: #777777; font-style: italic; }
 
 /* ---------- printing the sheet ----------

@@ -118,6 +118,57 @@ export default function ResumeEditor({
   }
 
   /**
+   * What the browser will call the saved PDF.
+   *
+   * "Save as PDF" takes its filename from `document.title`, and nothing was
+   * setting it — so every sheet came out named after the site itself, and
+   * printing two of them produced two files with the same name. The person
+   * receiving it reads this before they read anything inside, so it carries
+   * the name and the role.
+   */
+  const fileName = [
+    [identity?.profile.firstName, identity?.profile.lastName].filter(Boolean).join(" "),
+    // A headline may already contain a dash — "QA Engineer — Test Automation"
+    // — and joining on another produced "Name — QA Engineer — Test Automation",
+    // where the two dashes look like they separate three equal things. Inside
+    // the role, a comma is what the second one meant anyway.
+    (current?.headline || current?.name || "").replace(/\s*[—–]\s*/g, ", "),
+  ]
+    .filter(Boolean)
+    .join(" — ")
+    // Windows rejects these outright, and a browser silently mangling them
+    // would undo the point of naming the file at all.
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  /**
+   * Prints under the sheet's own name, then puts the page title back.
+   *
+   * Restored on `afterprint` rather than straight after `print()`: not every
+   * browser blocks on the dialog, and a title reverted too early is a title
+   * the save dialog never saw. The timer is there for the ones that never
+   * fire the event at all.
+   */
+  function printSheet() {
+    const previous = document.title;
+    if (fileName) document.title = fileName;
+
+    let restored = false;
+    const restore = () => {
+      if (restored) return;
+      restored = true;
+      document.title = previous;
+      window.removeEventListener("afterprint", restore);
+    };
+
+    window.addEventListener("afterprint", restore);
+    window.setTimeout(restore, 60_000);
+
+    window.print();
+  }
+
+  /**
    * Copies the whole sheet.
    *
    * Saved immediately rather than held as an unsaved draft: a copy exists to
@@ -270,10 +321,21 @@ export default function ResumeEditor({
               error={c.error}
               onSave={() => c.save(current)}
               trailing={
-                <Button variant="ghost" onClick={() => window.print()}>
-                  <Printer size={12} aria-hidden="true" className="mr-1.5 inline" />
-                  Print / Save PDF
-                </Button>
+                <>
+                  {/* Shown rather than left as a surprise in the save dialog:
+                      the filename is derived, so seeing it here is the only
+                      way to notice it is wrong before it is sent to someone. */}
+                  <span
+                    title="The name the PDF will be saved under"
+                    className="hidden max-w-[22rem] truncate font-mono text-[10px] text-ink-muted lg:inline"
+                  >
+                    {fileName || "untitled"}.pdf
+                  </span>
+                  <Button variant="ghost" onClick={printSheet}>
+                    <Printer size={12} aria-hidden="true" className="mr-1.5 inline" />
+                    Print / Save PDF
+                  </Button>
+                </>
               }
             >
               <Button variant="ghost" onClick={() => duplicate(current)}>

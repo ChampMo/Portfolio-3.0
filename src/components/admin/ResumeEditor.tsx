@@ -2,7 +2,18 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Printer, Trash2, Eye, EyeOff, GripVertical, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Printer,
+  Trash2,
+  Eye,
+  EyeOff,
+  GripVertical,
+  ChevronDown,
+  Copy,
+  ClipboardPaste,
+  X,
+} from "lucide-react";
 import type { ResumeDoc, ResumeEntry } from "@/models/Resume";
 import type { IdentityDoc } from "@/models/Identity";
 import type { SkillCategory } from "@/models/Skill";
@@ -75,6 +86,16 @@ export default function ResumeEditor({
 }) {
   const c = useCollection<ResumeDoc>("resumes", resumes);
 
+  /**
+   * Entries picked up with Copy, waiting to be pasted.
+   *
+   * Plain component state, deliberately. It only has to survive switching
+   * between sheets — which it does, because this component stays mounted while
+   * the selection changes — and keeping it out of storage means there is no
+   * server-versus-client difference for hydration to trip over.
+   */
+  const [clip, setClip] = useState<ResumeEntry[]>([]);
+
   const current = c.current;
 
   function patchEntries(kind: Kind, next: ResumeEntry[]) {
@@ -88,6 +109,31 @@ export default function ResumeEditor({
       ...current[kind],
       seed ?? { sourceId: "", title: "", subtitle: "", time: "", bullets: [], enabled: true },
     ]);
+  }
+
+  /** Appends the clipboard to a section, leaving it loaded for the next sheet. */
+  function paste(kind: Kind) {
+    if (!current || clip.length === 0) return;
+    patchEntries(kind, [...current[kind], ...clip.map((entry) => ({ ...entry }))]);
+  }
+
+  /**
+   * Copies the whole sheet.
+   *
+   * Saved immediately rather than held as an unsaved draft: a copy exists to
+   * be edited away from the original, and an unsaved one that vanishes on a
+   * mis-click would take the edits with it.
+   */
+  async function duplicate(sheet: ResumeDoc) {
+    const { _id, ...rest } = sheet;
+    void _id;
+    await c.create({
+      ...rest,
+      name: `${sheet.name} (copy)`,
+      // Placed after everything else rather than on top of the sheet it came
+      // from, which would leave two rows claiming the same position.
+      order: c.items.length,
+    });
   }
 
   return (
@@ -162,6 +208,10 @@ export default function ResumeEditor({
                   entries={current.experience}
                   onChange={(next) => patchEntries("experience", next)}
                   onAdd={(seed) => addEntry("experience", seed)}
+                  clip={clip}
+                  onCopy={(entry) => setClip((prev) => [...prev, entry])}
+                  onPaste={() => paste("experience")}
+                  onClearClip={() => setClip([])}
                   sources={experience.map((e) => ({
                     id: e._id,
                     label: `${e.role}${e.organization ? ` — ${e.organization}` : ""}`,
@@ -183,6 +233,10 @@ export default function ResumeEditor({
                   entries={current.projects}
                   onChange={(next) => patchEntries("projects", next)}
                   onAdd={(seed) => addEntry("projects", seed)}
+                  clip={clip}
+                  onCopy={(entry) => setClip((prev) => [...prev, entry])}
+                  onPaste={() => paste("projects")}
+                  onClearClip={() => setClip([])}
                   sources={projects.map((p) => ({
                     id: p._id,
                     label: p.name,
@@ -208,15 +262,23 @@ export default function ResumeEditor({
               />
             </div>
 
-            {/* Printing lives in the bar rather than under the sheet: the bar
-                is pinned to the bottom of every admin page, so the button is
-                reachable from wherever you happen to be in a long list of
-                entries — and taking it off the sheet keeps the pinned column
-                short enough not to need a scrollbar of its own. */}
-            <SaveBar state={c.state} error={c.error} onSave={() => c.save(current)}>
-              <Button variant="ghost" onClick={() => window.print()}>
-                <Printer size={12} aria-hidden="true" className="mr-1.5 inline" />
-                Print / Save PDF
+            {/* Printing sits at the far end, away from Delete: it acts on the
+                output rather than on the record, and it is the one button here
+                whose neighbour being Delete would matter. */}
+            <SaveBar
+              state={c.state}
+              error={c.error}
+              onSave={() => c.save(current)}
+              trailing={
+                <Button variant="ghost" onClick={() => window.print()}>
+                  <Printer size={12} aria-hidden="true" className="mr-1.5 inline" />
+                  Print / Save PDF
+                </Button>
+              }
+            >
+              <Button variant="ghost" onClick={() => duplicate(current)}>
+                <Copy size={12} aria-hidden="true" className="mr-1.5 inline" />
+                Duplicate
               </Button>
               <Button variant="danger" onClick={() => c.remove(current._id)}>
                 <Trash2 size={12} aria-hidden="true" className="mr-1.5 inline" />
@@ -314,6 +376,10 @@ function EntryPanel({
   sources,
   onChange,
   onAdd,
+  clip,
+  onCopy,
+  onPaste,
+  onClearClip,
 }: {
   kind: Kind;
   title: string;
@@ -321,6 +387,10 @@ function EntryPanel({
   sources: Source[];
   onChange: (v: ResumeEntry[]) => void;
   onAdd: (seed?: ResumeEntry) => void;
+  clip: ResumeEntry[];
+  onCopy: (entry: ResumeEntry) => void;
+  onPaste: () => void;
+  onClearClip: () => void;
 }) {
   const [picking, setPicking] = useState(false);
 
@@ -376,6 +446,15 @@ function EntryPanel({
                   }`}
                 >
                   {e.enabled ? <Eye size={12} /> : <EyeOff size={12} />}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Copy ${e.title || "entry"}`}
+                  title="Copy this entry, to paste into another sheet"
+                  onClick={() => onCopy({ ...e, bullets: [...e.bullets] })}
+                  className="grid size-7 place-items-center rounded border border-grid text-ink-muted transition-colors hover:border-signal hover:text-signal"
+                >
+                  <Copy size={12} aria-hidden="true" />
                 </button>
                 <button
                   type="button"
@@ -468,6 +547,33 @@ function EntryPanel({
         >
           Blank entry
         </button>
+
+        {/* Only offered when there is something to paste, so the row does not
+            carry a permanently dead button. The clipboard is not emptied by
+            pasting — the usual reason to copy an entry is to put it on more
+            than one sheet. */}
+        {clip.length > 0 ? (
+          <span className="inline-flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onPaste}
+              title={clip.map((x) => x.title || "untitled").join(", ")}
+              className="inline-flex items-center gap-2 rounded-full border border-signal px-4 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-signal transition-colors hover:bg-signal hover:text-on-signal"
+            >
+              <ClipboardPaste size={11} aria-hidden="true" />
+              Paste {clip.length}
+            </button>
+            <button
+              type="button"
+              onClick={onClearClip}
+              aria-label="Empty the clipboard"
+              title="Empty the clipboard"
+              className="grid size-7 place-items-center rounded-full text-ink-muted transition-colors hover:text-danger"
+            >
+              <X size={12} aria-hidden="true" />
+            </button>
+          </span>
+        ) : null}
       </div>
 
       {/* Opens in the flow rather than floating over it. The panel this sits in

@@ -468,11 +468,21 @@ export function SaveBar({
   error,
   onSave,
   children,
+  trailing,
 }: {
   state: SaveState;
   error?: string;
   onSave: () => void;
   children?: React.ReactNode;
+  /**
+   * Actions pinned to the far end of the bar.
+   *
+   * Everything on the left edits the record in front of you — save it, copy
+   * it, delete it. Something that acts on the *output* rather than the record
+   * does not belong in that run of buttons, and putting a printer next to a
+   * delete is asking for the wrong click.
+   */
+  trailing?: React.ReactNode;
 }) {
   return (
     <div className="sticky bottom-0 -mx-6 mt-8 flex flex-wrap items-center gap-4 border-t border-grid bg-ground/95 px-6 py-4 backdrop-blur md:-mx-10 md:px-10">
@@ -489,6 +499,7 @@ export function SaveBar({
       >
         {state === "saved" ? "Saved" : state === "error" ? error || "Save failed" : ""}
       </span>
+      {trailing ? <span className="ml-auto flex items-center gap-3">{trailing}</span> : null}
     </div>
   );
 }

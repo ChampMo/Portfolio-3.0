@@ -23,7 +23,7 @@ import type { ExperienceDoc } from "@/models/Experience";
 import { useCollection } from "@/lib/admin/useCollection";
 import { useDragReorder } from "@/lib/admin/useDragReorder";
 import CollectionLayout from "./CollectionLayout";
-import { PageHead, Panel, Field, Button, SaveBar, ListEditor } from "./ui";
+import { PageHead, Panel, Field, TextArea, Button, SaveBar, ListEditor } from "./ui";
 import ResumeSheet from "./ResumeSheet";
 
 /** Roughly what one line of a bullet holds at the printed size. */
@@ -55,6 +55,7 @@ function useMounted() {
 }
 
 const SECTION_LABEL: Record<string, string> = {
+  summary: "Summary",
   education: "Education",
   experience: "Experience",
   projects: "Projects",
@@ -246,6 +247,22 @@ export default function ResumeEditor({
                     placeholder="your-site.vercel.app"
                     hint="Printed on the contact line, without the https://"
                   />
+                  <div className="mt-4">
+                    <TextArea
+                      label="Summary"
+                      rows={3}
+                      value={current.summary}
+                      onChange={(v) => c.patch(current._id, { summary: v })}
+                      placeholder="Full-Stack Developer building … with React, Node.js and …"
+                    />
+                    {/* Counted in characters because that is what you can see
+                        while typing; the page gauge is still the real answer.
+                        About 105 fit on a printed line at this size. */}
+                    <p className="mt-1.5 text-[11px] text-ink-muted">
+                      {current.summary.length} characters — aim for two printed lines, about 210.
+                      Name the role and the stack the job ad names.
+                    </p>
+                  </div>
                 </Panel>
 
                 <SectionList

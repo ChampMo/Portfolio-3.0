@@ -1,3 +1,4 @@
+import { BY_ORDER } from "@/lib/data/ordering";
 import { NextResponse } from "next/server";
 import mongoose, { Model } from "mongoose";
 import { connectToDatabase } from "@/lib/db/mongodb";
@@ -80,7 +81,7 @@ export function listHandler({ model, name, normalise }: Omit<Resource, "sanitise
       // field (direct DB inserts, pre-existing data) are treated as published,
       // matching the schema default. See lib/data/queries.ts.
       const filter = isAdmin ? {} : { published: { $ne: false } };
-      const docs = await model.find(filter).sort({ order: 1, createdAt: 1 }).lean();
+      const docs = await model.find(filter).sort(BY_ORDER).lean();
       return ok(plain<unknown[]>(docs).map(normalise));
     } catch (err) {
       return boom(err, `GET /api/${name}`);

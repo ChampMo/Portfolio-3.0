@@ -1,3 +1,4 @@
+import { BY_ORDER } from "@/lib/data/ordering";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Service, { type ServiceDoc } from "@/models/Service";
 import { normalizeService } from "@/lib/data/normalize";
@@ -10,7 +11,7 @@ async function all(): Promise<ServiceDoc[]> {
   try {
     await connectToDatabase();
     // Admin view includes drafts, so no `published` filter here.
-    const docs = await Service.find({}).sort({ order: 1 }).lean();
+    const docs = await Service.find({}).sort(BY_ORDER).lean();
     const parsed = JSON.parse(JSON.stringify(docs)) as Partial<ServiceDoc>[];
     // Normalized: docs written before a field existed (or edited directly in
     // Mongo) come back from .lean() without it, and the editor's ListEditor
@@ -24,7 +25,7 @@ async function all(): Promise<ServiceDoc[]> {
 async function linkableProjects() {
   try {
     await connectToDatabase();
-    const docs = await Project.find({}).sort({ order: 1 }).select("name year published").lean();
+    const docs = await Project.find({}).sort(BY_ORDER).select("name year published").lean();
     return (JSON.parse(JSON.stringify(docs)) as Partial<ProjectDoc>[]).map((p) => ({
       _id: String(p._id ?? ""),
       name: p.name ?? "",

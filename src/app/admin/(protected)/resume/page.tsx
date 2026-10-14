@@ -1,3 +1,4 @@
+import { BY_ORDER } from "@/lib/data/ordering";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Resume, { type ResumeDoc } from "@/models/Resume";
 import Experience, { type ExperienceDoc } from "@/models/Experience";
@@ -27,12 +28,12 @@ async function load() {
     // content blocks to the browser, image URLs and all, for a dropdown. That
     // was 40KB of the page's payload to render 3KB worth of menu.
     const [resumes, experience, projects, identity, skills, services] = await Promise.all([
-      Resume.find({}).sort({ order: 1 }).lean(),
-      Experience.find({}).select("role organization time achievements").sort({ order: 1 }).lean(),
-      Project.find({}).select("name role year highlights").sort({ order: 1 }).lean(),
+      Resume.find({}).sort(BY_ORDER).lean(),
+      Experience.find({}).select("role organization time achievements").sort(BY_ORDER).lean(),
+      Project.find({}).select("name role year highlights").sort(BY_ORDER).lean(),
       Identity.findOne({ key: "main" }).lean(),
       Skill.findOne({ key: "main" }).lean(),
-      Service.find({}).select("name published").sort({ order: 1 }).lean(),
+      Service.find({}).select("name published").sort(BY_ORDER).lean(),
     ]);
 
     const json = <T,>(v: unknown) => JSON.parse(JSON.stringify(v)) as T;

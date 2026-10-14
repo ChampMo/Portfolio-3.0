@@ -1,3 +1,4 @@
+import { BY_ORDER } from "@/lib/data/ordering";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Experience, { type ExperienceDoc } from "@/models/Experience";
 import { normalizeExperience } from "@/lib/data/normalize";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 async function all(): Promise<ExperienceDoc[]> {
   try {
     await connectToDatabase();
-    const docs = await Experience.find({}).sort({ order: 1 }).lean();
+    const docs = await Experience.find({}).sort(BY_ORDER).lean();
     const parsed = JSON.parse(JSON.stringify(docs)) as Partial<ExperienceDoc>[];
     return parsed.map(normalizeExperience);
   } catch {

@@ -76,8 +76,13 @@ export type DeviceType = (typeof DEVICE_TYPES)[number];
  * is nothing in them worth rewording. `experience` and `projects` are written
  * on the sheet itself, because fitting a page is a rewording job and the
  * wording that suits a CV is not the wording that suits a case study.
+ *
+ * `summary` is first because that is where it prints by default, and it is
+ * written per sheet too: two lines aimed at one kind of role is the whole
+ * point of it, and a summary shared across sheets would be aimed at none.
  */
 export const RESUME_SECTIONS = [
+  "summary",
   "education",
   "experience",
   "projects",

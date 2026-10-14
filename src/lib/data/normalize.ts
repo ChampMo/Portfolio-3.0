@@ -238,6 +238,11 @@ export function normalizeResume(raw: Partial<ResumeDoc> & { _id?: unknown }): Re
     name: text(raw?.name),
     headline: text(raw?.headline),
     website: text(raw?.website),
+    summary: text(raw?.summary),
+    // A sheet saved before `summary` existed has no row for it. Its default
+    // order is its index — 0 — which ties with whatever is stored first, and
+    // the sort being stable is what puts the summary above it rather than
+    // somewhere arbitrary.
     sections: RESUME_SECTIONS.map((key, i) => {
       const hit = stored.get(key);
       return {

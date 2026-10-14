@@ -1,3 +1,4 @@
+import { BY_ORDER } from "@/lib/data/ordering";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Project, { type ProjectDoc } from "@/models/Project";
 import { normalizeProject } from "@/lib/data/normalize";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 async function all(): Promise<ProjectDoc[]> {
   try {
     await connectToDatabase();
-    const docs = await Project.find({}).sort({ order: 1 }).lean();
+    const docs = await Project.find({}).sort(BY_ORDER).lean();
     const parsed = JSON.parse(JSON.stringify(docs)) as Partial<ProjectDoc>[];
     return parsed.map(normalizeProject);
   } catch {

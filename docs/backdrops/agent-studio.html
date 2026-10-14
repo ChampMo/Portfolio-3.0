@@ -1,0 +1,318 @@
+<script type="application/json" id="signal-theme">
+{
+  "dark": {
+    "ground":     "#0a1216",
+    "panel":      "#101b21",
+    "panel-2":    "#16252d",
+    "grid":       "#223a44",
+    "ink":        "#e6f1f4",
+    "ink-muted":  "#8aa5b0",
+    "signal":     "#3fbcd8",
+    "on-signal":  "#04212a",
+    "telemetry":  "#e0a350"
+  },
+  "light": {
+    "ground":     "#eef4f5",
+    "panel":      "#ffffff",
+    "panel-2":    "#f3f8f9",
+    "grid":       "#d7e4e8",
+    "ink":        "#0d1a1f",
+    "ink-muted":  "#55707a",
+    "signal":     "#0d7f96",
+    "on-signal":  "#ffffff",
+    "telemetry":  "#b0731c"
+  }
+}
+</script>
+
+<style>
+  /* Transparent all the way down. The panel behind supplies the ground, and
+     the wrapper this frame sits in carries the product opacity — anything
+     opaque in here would tint the whole panel rather than sit behind it. */
+  :root { color-scheme: normal; }
+  html, body { background: transparent; }
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+</style>
+
+<canvas id="c"></canvas>
+
+<script>
+  /**
+   * Dispatch — the shape of a run.
+   *
+   * Four lanes: the leader on top, two teammates in the middle, the reviewer
+   * at the bottom. A task enters on the leader lane, drops to whichever
+   * teammate it was given to, and finishes at the reviewer. Some come back:
+   * the reviewer pushes them up to the *other* teammate and they run again.
+   *
+   * The route a task has already covered stays drawn behind it. That is the
+   * picture rather than decoration on it — this app derives every view from
+   * one append-only log, so here too nothing is erased and the history is
+   * the image.
+   */
+  (function () {
+    var canvas = document.getElementById("c");
+    var ctx = canvas.getContext("2d");
+    var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* Canvas cannot read `var(--signal)` the way CSS can, so the palette is
+       resolved from the document and re-resolved whenever the parent posts a
+       new one — otherwise every colour survives a theme change unchanged and
+       the whole thing goes invisible against the new ground. */
+    var gridC, mutedC, signalC, telemC;
+    function readPalette() {
+      var css = getComputedStyle(document.documentElement);
+      gridC = css.getPropertyValue("--grid").trim() || "#d7e4e8";
+      mutedC = css.getPropertyValue("--ink-muted").trim() || "#55707a";
+      signalC = css.getPropertyValue("--signal").trim() || "#0d7f96";
+      telemC = css.getPropertyValue("--telemetry").trim() || "#b0731c";
+    }
+    readPalette();
+
+    /**
+     * Sizes the bitmap to the element.
+     *
+     * Observed rather than measured once. The frame is built the moment its
+     * panel scrolls into view, and on that first pass the canvas can still
+     * report zero — a guard like `Math.max(1, ...)` then produces a 1x1
+     * bitmap that nothing ever corrects, because an iframe window never
+     * fires `resize` when only its element changes size. CSS stretches that
+     * single pixel over the panel and the backdrop reads as a flat wash.
+     */
+    var w = 0, h = 0, dpr = 1;
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      if (!w || !h) return;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    resize();
+    addEventListener("resize", resize);
+    if (typeof ResizeObserver === "function") {
+      new ResizeObserver(resize).observe(canvas);
+    }
+
+    /* The pointer arrives from the parent page. This frame never receives
+       mouse events of its own — it must not intercept clicks meant for the
+       download button — so the coordinates are posted in. */
+    var tx = 0.5, mx = 0.5;
+    addEventListener("message", function (e) {
+      var d = e.data || {};
+      if (d.signalPointer) tx = d.signalPointer.x;
+      if (typeof d.signalPalette === "string") setTimeout(readPalette, 0);
+    });
+
+    /* Leader, two teammates, reviewer. */
+    var LANE = [0.2, 0.41, 0.59, 0.8];
+
+    /**
+     * One task whole route, decided up front.
+     *
+     * A polyline rather than a state machine: the rework case wants to move
+     * *backwards* along the reviewer lane and up again, which is two lines to
+     * express as waypoints and a tangle to express as rules.
+     *
+     * Hand-offs are placed past the middle on purpose. The panel text sits
+     * over the left of this, so the left is where a task should be doing the
+     * least — a long quiet run on the leader lane — and the right is where it
+     * can afford to be busy.
+     */
+    function makeTask() {
+      var a = Math.random() < 0.5 ? 1 : 2;
+
+      // Each task picks its own hand-off points. Shared ones stack every route
+      // onto the same few lines, which drew one bold corridor and read as a
+      // single diagram rather than as several tasks in flight at once.
+      function at(x) {
+        return x + (Math.random() - 0.5) * 0.07;
+      }
+
+      // Clear of the copy. The heading and button reach roughly halfway
+      // across the panel, and a hand-off under them is a diagonal crossing a
+      // line of text — legible on its own, noise behind a paragraph.
+      var give = at(0.51);
+      var done = at(0.78);
+      var pts = [
+        [-0.08, LANE[0]],
+        [give, LANE[0]],
+        [give + 0.05, LANE[a]],
+        [done, LANE[a]],
+        [done + 0.05, LANE[3]]
+      ];
+
+      // Sent back, and to the other teammate — a review that bounced the work
+      // to whoever could actually do it, which is the run this app exists to
+      // make visible.
+      if (Math.random() < 0.34) {
+        var b = a === 1 ? 2 : 1;
+        var again = at(0.64);
+        pts.push(
+          [done - 0.08, LANE[3]],
+          [again, LANE[b]],
+          [done, LANE[b]],
+          [done + 0.05, LANE[3]]
+        );
+      }
+
+      pts.push([1.08, LANE[3]]);
+      return { pts: pts, i: 0, t: 0, speed: 0.085 + Math.random() * 0.05, flash: 0 };
+    }
+
+    function segLen(p, q) {
+      var dx = q[0] - p[0], dy = q[1] - p[1];
+      return Math.sqrt(dx * dx + dy * dy) || 1e-6;
+    }
+
+    /**
+     * Drops a task somewhere along its route rather than at the start.
+     *
+     * By *distance*, not by segment index. The opening run on the leader lane
+     * is over half the route, so seeding one task per segment still left most
+     * of them queued on that first line — the panel opened on a row of dots
+     * sitting in a row and nothing else happening.
+     */
+    function seedAlongRoute(task) {
+      var total = 0, k;
+      for (k = 0; k < task.pts.length - 1; k++) total += segLen(task.pts[k], task.pts[k + 1]);
+
+      var d = Math.random() * total;
+      for (k = 0; k < task.pts.length - 1; k++) {
+        var len = segLen(task.pts[k], task.pts[k + 1]);
+        if (d < len) {
+          task.i = k;
+          task.t = d / len;
+          return task;
+        }
+        d -= len;
+      }
+      return task;
+    }
+
+    var tasks = [];
+    for (var s = 0; s < 6; s++) tasks.push(seedAlongRoute(makeTask()));
+
+    function head(task) {
+      var p = task.pts[task.i], q = task.pts[task.i + 1];
+      return [p[0] + (q[0] - p[0]) * task.t, p[1] + (q[1] - p[1]) * task.t];
+    }
+
+    function paint() {
+      // Nothing to draw into yet; the observer will call back once there is.
+      if (!w || !h) return;
+      ctx.clearRect(0, 0, w, h);
+
+      // Lanes. Dashed, because a solid rule at this weight reads as a border
+      // on the panel rather than as something behind it.
+      ctx.setLineDash([2, 7]);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = gridC;
+      ctx.globalAlpha = 0.75;
+      for (var l = 0; l < LANE.length; l++) {
+        ctx.beginPath();
+        ctx.moveTo(0, LANE[l] * h);
+        ctx.lineTo(w, LANE[l] * h);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      // The playhead. The pointer scrubs the record, so whatever is crossing
+      // it lights up — the one thing in here the visitor drives.
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = telemC;
+      ctx.beginPath();
+      ctx.moveTo(mx * w, LANE[0] * h - 16);
+      ctx.lineTo(mx * w, LANE[3] * h + 16);
+      ctx.stroke();
+
+      for (var k = 0; k < tasks.length; k++) {
+        var task = tasks[k];
+        var hp = head(task);
+        var lit = Math.abs(hp[0] - mx) < 0.035;
+
+        // The route already covered. Never trimmed while the task lives:
+        // this is the log, and a log that forgets is not one.
+        ctx.strokeStyle = mutedC;
+        ctx.globalAlpha = 0.28;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(task.pts[0][0] * w, task.pts[0][1] * h);
+        for (var j = 1; j <= task.i; j++) {
+          ctx.lineTo(task.pts[j][0] * w, task.pts[j][1] * h);
+        }
+        ctx.lineTo(hp[0] * w, hp[1] * h);
+        ctx.stroke();
+
+        // Every hand-off already made, left as a mark. A bare polyline shows
+        // the shape of a run but not where anything was *decided*, and the
+        // decisions are the part worth seeing.
+        ctx.fillStyle = mutedC;
+        ctx.globalAlpha = 0.4;
+        for (var v = 1; v <= task.i; v++) {
+          ctx.beginPath();
+          ctx.arc(task.pts[v][0] * w, task.pts[v][1] * h, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // The head, brighter at a hand-off and brighter still under the
+        // playhead, so the eye is drawn to decisions rather than to travel.
+        var r = 2.4 + task.flash * 2.2 + (lit ? 1.6 : 0);
+        ctx.globalAlpha = lit ? 0.95 : 0.55 + task.flash * 0.4;
+        ctx.fillStyle = lit || task.flash > 0.15 ? signalC : mutedC;
+        ctx.beginPath();
+        ctx.arc(hp[0] * w, hp[1] * h, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.globalAlpha = 1;
+    }
+
+    if (reduce) {
+      paint();
+      return;
+    }
+
+    var last = 0;
+    function frame(now) {
+      // Time-based, so a 120Hz display does not run the whole thing twice as
+      // fast as a 60Hz one. Clamped because a backgrounded tab resumes with a
+      // gap large enough to teleport every task off the right edge.
+      var dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
+      last = now;
+
+      mx += (tx - mx) * 0.08;
+
+      for (var k = 0; k < tasks.length; k++) {
+        var task = tasks[k];
+        task.flash = Math.max(0, task.flash - dt * 1.6);
+        task.t += (task.speed * dt) / segLen(task.pts[task.i], task.pts[task.i + 1]);
+
+        while (task.t >= 1) {
+          task.t -= 1;
+          task.i++;
+          if (task.i >= task.pts.length - 1) {
+            // Retired and replaced rather than rewound: a task looped back to
+            // the start would drag its whole recorded route with it.
+            task = makeTask();
+            tasks[k] = task;
+            break;
+          }
+          task.flash = 1;
+        }
+      }
+
+      paint();
+      requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+  })();
+</script>

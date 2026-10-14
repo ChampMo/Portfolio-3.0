@@ -392,6 +392,8 @@ body {
 }
 
 .cv-skill-row { margin: 0.6mm 0 0; }
+/* Prose, not a list — no indent, and no top margin past the heading rule. */
+.cv-summary { margin: 0; }
 .cv-empty { margin: 0; font-size: 9pt; color: #777777; font-style: italic; }
 
 /* ---------- printing the sheet ----------

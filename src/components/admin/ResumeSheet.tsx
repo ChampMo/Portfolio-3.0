@@ -105,6 +105,15 @@ export default function ResumeSheet({
       </header>
 
       {ordered.map((s) => {
+        if (s.key === "summary") {
+          if (!resume.summary?.trim()) return null;
+          return (
+            <Section key={s.key} title="Summary">
+              <p className="cv-summary">{resume.summary}</p>
+            </Section>
+          );
+        }
+
         if (s.key === "education") {
           if (!edu?.universityName && !edu?.major) return null;
           return (

@@ -60,6 +60,14 @@ const ResumeSchema = new Schema(
      * `localhost:3000` would be a bad day.
      */
     website: { type: String, default: "", trim: true },
+    /**
+     * Two lines under the header: the role, the stack, what you are good at.
+     *
+     * It is the first thing both a recruiter and a screening model read, and
+     * the one place a sheet can say in plain words which job it is for — so it
+     * lives on the sheet, not on the identity.
+     */
+    summary: { type: String, default: "", trim: true },
     sections: { type: [SectionSchema], default: [] },
     experience: { type: [EntrySchema], default: [] },
     projects: { type: [EntrySchema], default: [] },
@@ -88,6 +96,7 @@ export type ResumeDoc = {
   name: string;
   headline: string;
   website: string;
+  summary: string;
   sections: ResumeSectionRow[];
   experience: ResumeEntry[];
   projects: ResumeEntry[];

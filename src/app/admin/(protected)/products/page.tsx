@@ -1,3 +1,4 @@
+import { BY_ORDER } from "@/lib/data/ordering";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Product, { type ProductDoc } from "@/models/Product";
 import Project from "@/models/Project";
@@ -44,10 +45,10 @@ async function load() {
   try {
     await connectToDatabase();
     const [products, projects] = await Promise.all([
-      Product.find({}).sort({ order: 1 }).lean(),
+      Product.find({}).sort(BY_ORDER).lean(),
       Project.find({})
         .select("name year published coverImage blocks")
-        .sort({ order: 1 })
+        .sort(BY_ORDER)
         .lean(),
     ]);
 

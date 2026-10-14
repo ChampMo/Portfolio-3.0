@@ -271,6 +271,9 @@ export function sanitiseResume(b: Record<string, unknown>) {
     headline: has(b, "headline") ? str(b.headline) : undefined,
     // `safeUrl` also fills in https:// for a bare host typed by hand.
     website: has(b, "website") ? safeUrl(b.website) : undefined,
+    // Capped well above two printed lines: the page gauge is what says when it
+    // is too long, this only stops a pasted essay.
+    summary: has(b, "summary") ? str(b.summary).slice(0, 600) : undefined,
     sections: has(b, "sections")
       ? (Array.isArray(b.sections) ? b.sections : [])
           .map((raw) => {

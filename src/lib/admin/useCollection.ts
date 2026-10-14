@@ -67,9 +67,23 @@ export function useCollection<T extends WithId>(resource: string, initial: T[]) 
   const reorder = useCallback(
     async (ids: string[]) => {
       // Optimistic: reflect the new order before the round-trip resolves.
+      //
+      // Each item's own `order` is rewritten to its new index, not just the
+      // array resequenced. The server is about to store exactly these indices,
+      // and `save` sends the whole item back — so an item left holding its old
+      // `order` would put that stale number back into the database the next
+      // time it was edited. Two rows then claim the same position, and the
+      // list stops having one true sequence.
       setItems((prev) => {
         const map = new Map(prev.map((i) => [i._id, i]));
-        return ids.map((id) => map.get(id)!).filter(Boolean);
+        const next: T[] = [];
+        for (const id of ids) {
+          const item = map.get(id);
+          // Numbered by position in the list being built, not by position in
+          // `ids`, so an id with no matching item cannot leave a gap.
+          if (item) next.push({ ...item, order: next.length } as T);
+        }
+        return next;
       });
       await run(`/api/${resource}/reorder`, {
         method: "PATCH",

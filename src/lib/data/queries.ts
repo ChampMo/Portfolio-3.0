@@ -1,3 +1,4 @@
+import { BY_ORDER } from "./ordering";
 import { connectToDatabase } from "@/lib/db/mongodb";
 import Identity, { type IdentityDoc } from "@/models/Identity";
 import Skill, { type SkillDoc } from "@/models/Skill";
@@ -67,7 +68,7 @@ export async function getSkills(): Promise<SkillDoc | null> {
 export async function getServices(): Promise<ServiceDoc[]> {
   try {
     await connectToDatabase();
-    const docs = await Service.find(PUBLISHED).sort({ order: 1 }).lean();
+    const docs = await Service.find(PUBLISHED).sort(BY_ORDER).lean();
     return jsonSafe<Partial<ServiceDoc>[]>(docs).map(normalizeService);
   } catch (err) {
     console.error("[data] getServices:", err);
@@ -78,7 +79,7 @@ export async function getServices(): Promise<ServiceDoc[]> {
 export async function getProjects(): Promise<ProjectDoc[]> {
   try {
     await connectToDatabase();
-    const docs = await Project.find(PUBLISHED).sort({ order: 1 }).lean();
+    const docs = await Project.find(PUBLISHED).sort(BY_ORDER).lean();
     return jsonSafe<Partial<ProjectDoc>[]>(docs).map(normalizeProject);
   } catch (err) {
     console.error("[data] getProjects:", err);
@@ -113,7 +114,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectDoc | null>
 export async function getProducts(): Promise<ProductDoc[]> {
   try {
     await connectToDatabase();
-    const docs = await Product.find(PUBLISHED).sort({ order: 1 }).lean();
+    const docs = await Product.find(PUBLISHED).sort(BY_ORDER).lean();
     return jsonSafe<Partial<ProductDoc>[]>(docs).map(normalizeProduct);
   } catch (err) {
     console.error("[data] getProducts:", err);
@@ -124,7 +125,7 @@ export async function getProducts(): Promise<ProductDoc[]> {
 export async function getExperience(): Promise<ExperienceDoc[]> {
   try {
     await connectToDatabase();
-    const docs = await Experience.find(PUBLISHED).sort({ order: 1 }).lean();
+    const docs = await Experience.find(PUBLISHED).sort(BY_ORDER).lean();
     return jsonSafe<Partial<ExperienceDoc>[]>(docs).map(normalizeExperience);
   } catch (err) {
     console.error("[data] getExperience:", err);
